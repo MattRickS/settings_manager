@@ -1,5 +1,5 @@
 import unittest
-from settings_manager import Settings, SettingsError
+from settings import Settings, SettingsError
 
 
 class TestSettingsAdd(unittest.TestCase):

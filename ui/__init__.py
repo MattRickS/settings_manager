@@ -1,1 +1,1 @@
-from .settings_viewer import SettingsViewer
+from .viewer import SettingsViewer

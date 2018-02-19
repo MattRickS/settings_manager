@@ -1,2 +1,2 @@
-from .settings_manager import Settings, SettingsError
+from .settings import Settings, SettingsError
 from . import ui

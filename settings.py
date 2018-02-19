@@ -97,32 +97,3 @@ class Settings(object):
         :rtype: dict
         """
         return self._data[name]
-
-
-if __name__ == '__main__':
-    s = Settings()
-    s.add("thing", 0)
-    s.add("other", "value")
-    s.add("bool", False)
-    s.add("choices", "yes", choices=["yes", "no", "maybe"])
-
-    print list(s)
-    print s.other
-    print s.thing
-    print s.bool
-
-    s.other = "new_value"
-    print s.other
-
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    viewer = SettingsViewer(s)
-    viewer.show()
-
-    # Enter Qt application main loop
-    app.exec_()
-
-    for setting in sorted(viewer.settings):
-        print setting, ":", viewer.settings[setting]
-
-    sys.exit()
