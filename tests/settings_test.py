@@ -34,6 +34,14 @@ class TestSettingsAdd(unittest.TestCase):
         self._add("yes", choices=["yes", "no", "maybe"])
         self._add(0, choices=[0, 1, 2, 3, 4])
 
+    def test_add_fail(self):
+        s = Settings()
+        s.add("a", "b")
+        self.assertRaises(SettingsError, s.add, "thing", 0, choices=["a", "b"])
+        self.assertRaises(SettingsError, s.add, "thing", 0, choices=[0, "b"])
+        self.assertRaises(SettingsError, s.add, "a", "val")
+        self.assertRaises(SettingsError, s.add, 0, "val")
+
 
 class TestSettingsGetter(unittest.TestCase):
     def setUp(self):
@@ -124,6 +132,21 @@ class TestSettingsProperties(unittest.TestCase):
             "type": str,
             "value": "string",
         })
+
+
+class TestSettingsExtra(unittest.TestCase):
+    def test_iter(self):
+        s = Settings()
+        s.add("key", "val")
+        s.add("a", "b")
+        self.assertSetEqual(set(s), {"key", "a"})
+        self.assertEquals(len(s), 2)
+
+    def test_bool(self):
+        s = Settings()
+        self.assertFalse(bool(s))
+        s.add("a", "b")
+        self.assertTrue(bool(s))
 
 
 if __name__ == '__main__':

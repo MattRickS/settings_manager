@@ -25,6 +25,9 @@ class Settings(object):
     def __iter__(self):
         return iter(self._data)
 
+    def __len__(self):
+        return len(self._data)
+
     def __getattr__(self, item):
         return self[item]
 
@@ -41,6 +44,14 @@ class Settings(object):
             raise SettingsError("Invalid value {!r} for setting {!r}".format(value, key))
         self._data[key]["value"] = value
 
+    # Python 2.x
+    def __nonzero__(self):
+        return len(self) > 0
+
+    # Python 3.x
+    def __bool__(self):
+        return len(self) > 0
+
     def add(self, name, default, choices=None, data_type=None, label=None, hidden=False):
         """
         :param str  name:      The name of the setting. Used to get and set the value.
@@ -52,6 +63,9 @@ class Settings(object):
         """
         if name in self._data:
             raise SettingsError("Setting already exists: {!r}".format(name))
+
+        if not isinstance(name, str):
+            raise SettingsError("Setting keys must be strings")
 
         if data_type is None and default is None:
             raise SettingsError("Unknown data type for setting {!r}. "
