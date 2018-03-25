@@ -230,7 +230,7 @@ class Settings(object):
         """
         widget = self.properties(key)["widget"]
         if widget:
-            return widget(*args, **kwargs)
+            return widget(self, key, *args, **kwargs)
 
         # Only import UI when required
         from settings_manager.ui import get_default_widget
@@ -244,7 +244,7 @@ class Settings(object):
         :return: UI Widget object
         """
         if self._widget:
-            return self._widget(*args, **kwargs)
+            return self._widget(self, *args, **kwargs)
 
         # Only import UI when required
         from settings_manager.ui import SettingsViewer
