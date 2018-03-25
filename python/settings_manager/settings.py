@@ -49,7 +49,7 @@ class Settings(object):
         return len(self) > 0
 
     def add(self, name, default, choices=None, data_type=None, hidden=False,
-            label=None, nullable=False, parent=None, widget=None, **kwargs):
+            label=None, minmax=None, nullable=False, parent=None, widget=None, **kwargs):
         """
         Required
         :param str      name:      The name of the setting. Used to get and set the value.
@@ -60,6 +60,7 @@ class Settings(object):
         :param          data_type: The type of the value. Inferred from default if not given.
         :param bool     hidden:    Whether or not the setting should be visible.
         :param str      label:     The display name for the setting. Uses name if not given.
+        :param tuple    minmax:    Tuple of minimum and maximum values for floats or ints.
         :param bool     nullable:  Whether or not None is a valid value
         :param str      parent:    Another setting name who's value must evaluate True for this
                                    setting to be set, and get to return it's value instead of None
@@ -95,11 +96,22 @@ class Settings(object):
             raise SettingsError(
                 "Parent {!r} does not exist when adding setting: {!r}".format(parent, name))
 
+        if minmax is not None:
+            try:
+                lo, hi = minmax
+                if not lo <= default <= hi:
+                    raise SettingsError(
+                        "Setting {!r} value is not in minmax range: {}".format(name, minmax))
+            except (ValueError, TypeError):
+                raise SettingsError(
+                    "minmax property is not a valid value. Must be tuple of 2 numeric values.")
+
         self._data[name] = {
             "choices": choices or list(),
             "default": default,
             "hidden": hidden,
             "label": label or name.replace('_', ' '),
+            "minmax": minmax,
             "nullable": nullable or (default is None),
             "parent": parent,
             "data_type": data_type,
@@ -206,6 +218,13 @@ class Settings(object):
             if not self.get(parent):
                 raise SettingsError(
                     "Setting {!r} cannot be set, parent {!r} is not valid".format(key, parent))
+
+        minmax = properties["minmax"]
+        if data_type in (float, int) and minmax is not None:
+            lo, hi = minmax
+            if not lo <= value <= hi:
+                raise SettingsError(
+                    "Value does not fit in range {} for setting: {!r}".format(minmax, key))
 
         self._data[key]["value"] = value
         self.settingChanged.emit(key, value)

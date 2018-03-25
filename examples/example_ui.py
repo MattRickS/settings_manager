@@ -21,7 +21,7 @@ class MultiLineSettings(QtWidgets.QPlainTextEdit):
 
 settings = Settings()
 settings.add("enable_options", True, label="Enable Options?")
-settings.add("number_of_tries", 1, label="Number of Tries", parent="enable_options")
+settings.add("number_of_tries", 1, label="Number of Tries", minmax=(1, 5), parent="enable_options")
 settings.add("options", "down", choices=["up", "down", "left", "right"], parent="enable_options")
 settings.add("custom_command", None, data_type=str,
              label="Custom Command", widget=MultiLineSettings)

@@ -72,6 +72,13 @@ class TestSettingsSetter(unittest.TestCase):
         s.add("choices", 1, choices=[1, 2, 3], nullable=True)
         s.set("choices", None)
 
+    def test_set_range(self):
+        s = Settings()
+        s.add("value", 1, minmax=(0, 100))
+        self.assertRaises(SettingsError, s.add, "key", 1, minmax=1)
+        s.set("value", 99)
+        self.assertRaises(SettingsError, s.set, "value", -1)
+
 
 class TestSettingsProperties(unittest.TestCase):
     def _get_properties(self, setting, *args, **kwargs):
@@ -86,6 +93,7 @@ class TestSettingsProperties(unittest.TestCase):
             "default": True,
             "hidden": False,
             "label": "bool",
+            "minmax": None,
             "nullable": False,
             "parent": None,
             "data_type": bool,
@@ -98,6 +106,7 @@ class TestSettingsProperties(unittest.TestCase):
             "default": None,
             "hidden": False,
             "label": "bool",
+            "minmax": None,
             "nullable": True,
             "parent": None,
             "data_type": bool,
@@ -110,6 +119,7 @@ class TestSettingsProperties(unittest.TestCase):
             "default": True,
             "hidden": False,
             "label": "bool",
+            "minmax": None,
             "nullable": False,
             "parent": None,
             "data_type": bool,
@@ -124,6 +134,7 @@ class TestSettingsProperties(unittest.TestCase):
             "default": "yes",
             "hidden": False,
             "label": "choices",
+            "minmax": None,
             "nullable": False,
             "parent": None,
             "data_type": str,
@@ -137,6 +148,7 @@ class TestSettingsProperties(unittest.TestCase):
             "default": "yes",
             "hidden": False,
             "label": "choices",
+            "minmax": None,
             "nullable": True,
             "parent": None,
             "data_type": str,
@@ -151,6 +163,7 @@ class TestSettingsProperties(unittest.TestCase):
             "default": 10.0,
             "hidden": False,
             "label": "float",
+            "minmax": None,
             "nullable": False,
             "parent": None,
             "data_type": float,
@@ -165,6 +178,7 @@ class TestSettingsProperties(unittest.TestCase):
             "default": 5,
             "hidden": False,
             "label": "int",
+            "minmax": None,
             "nullable": False,
             "parent": None,
             "data_type": int,
@@ -179,6 +193,7 @@ class TestSettingsProperties(unittest.TestCase):
             "default": "string",
             "hidden": False,
             "label": "str",
+            "minmax": None,
             "nullable": False,
             "parent": None,
             "data_type": str,

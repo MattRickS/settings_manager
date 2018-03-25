@@ -120,6 +120,13 @@ class FloatSetting(QtWidgets.QDoubleSpinBox):
         if value:
             self.setValue(value)
 
+        properties = self.settings.properties(setting_name)
+        minmax = properties["minmax"]
+        if minmax:
+            lo, hi = minmax
+            self.setMinimum(float(lo))
+            self.setMaximum(float(hi))
+
         # Connection
         self.valueChanged.connect(self._on_value_changed)
 
@@ -145,6 +152,13 @@ class IntSetting(QtWidgets.QSpinBox):
         value = self.settings.get(setting_name)
         if value:
             self.setValue(value)
+
+        properties = self.settings.properties(setting_name)
+        minmax = properties["minmax"]
+        if minmax:
+            lo, hi = minmax
+            self.setMinimum(int(lo))
+            self.setMaximum(int(hi))
 
         # Connection
         self.valueChanged.connect(self._on_value_changed)
