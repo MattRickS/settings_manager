@@ -11,7 +11,6 @@ def get_default_widget(settings, key):
     :param str  key:        Name of the setting to build a widget for
     :rtype: QtWidgets.QWidget
     """
-    # TODO: add support for list (requires editable and size properties)
     properties = settings.properties(key)
     data_type = properties["data_type"]
     if properties["choices"]:
@@ -24,5 +23,7 @@ def get_default_widget(settings, key):
         return FloatSetting(settings, key)
     elif data_type == bool:
         return BoolSetting(settings, key)
+    elif data_type == list:
+        return ListSetting(settings, key)
     else:
         raise TypeError("Unsupported setting UI type: {}".format(data_type))

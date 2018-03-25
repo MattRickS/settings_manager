@@ -25,6 +25,7 @@ settings.add("number_of_tries", 1, label="Number of Tries", parent="enable_optio
 settings.add("options", "down", choices=["up", "down", "left", "right"], parent="enable_options")
 settings.add("custom_command", None, data_type=str,
              label="Custom Command", widget=MultiLineSettings)
+settings.add("valid_items", ["value 1", "value 2", "value 3"])
 
 app = QtWidgets.QApplication(sys.argv)
 widget = settings.widget()

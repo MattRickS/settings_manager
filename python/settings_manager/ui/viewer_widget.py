@@ -1,4 +1,4 @@
-from Qt import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore, QtGui
 from functools import partial
 
 
@@ -91,7 +91,7 @@ class SettingsViewer(QtWidgets.QWidget):
                 widget.setEnabled(False)
 
             # Add to Layout
-            layout.addWidget(label, row, 0)
+            layout.addWidget(label, row, 0, alignment=QtCore.Qt.AlignTop)
             layout.addWidget(widget, row, 1)
 
             # If nullable, add a checkbox to disable the value
