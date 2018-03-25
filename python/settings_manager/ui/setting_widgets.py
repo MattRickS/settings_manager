@@ -1,4 +1,4 @@
-from PySide2 import QtWidgets, QtCore, QtGui
+from Qt import QtWidgets, QtCore, QtGui
 
 __all__ = [
     "BoolSetting",
