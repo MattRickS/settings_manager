@@ -26,11 +26,17 @@ class SettingsViewer(QtWidgets.QWidget):
             >>>         self.settings.set(setting, value)
     """
 
-    def __init__(self, settings_obj, parent=None, prefix=""):
+    def __init__(self, settings_obj, parent=None, prefix="", skip=None):
+        """
+        :param Settings             settings_obj:   Settings object to build for
+        :param QtWidgets.QWidget    parent:         Parent widget
+        :param str                  prefix:         Name to prefix all setting with (Default blank)
+        :param list[str]            skip:           List of setting names to ignore
+        """
         super(SettingsViewer, self).__init__(parent)
         self.prefix = prefix
         self.settings = settings_obj
-        layout = self._build_default_layout(settings_obj)
+        layout = self._build_default_layout(settings_obj, skip=skip)
         self.setLayout(layout)
 
     def get_widget(self, setting):
@@ -56,13 +62,14 @@ class SettingsViewer(QtWidgets.QWidget):
     #                            PROTECTED
     # -----------------------------------------------------------------
 
-    def _build_default_layout(self, settings_obj):
+    def _build_default_layout(self, settings_obj, skip=None):
         """
         Builds a default grid layout for the UI.
 
         :param Settings settings_obj:
         :rtype: QtWidgets.QGridLayout
         """
+        skip = skip or list()
         layout = QtWidgets.QGridLayout()
 
         # Order so that children are after their parents
@@ -78,7 +85,7 @@ class SettingsViewer(QtWidgets.QWidget):
             properties = self.settings.properties(name)
 
             # Get the widget if required
-            if properties["hidden"] or properties["data_type"] == object:
+            if properties["hidden"] or properties["data_type"] == object or name in skip:
                 continue
 
             # Setup a separate label for the widget
