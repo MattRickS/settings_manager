@@ -18,11 +18,13 @@ class Signal(object):
         return self
 
     def connect(self, func):
+        if isinstance(func, Signal):
+            func = func.emit
         self._connections.append(func)
 
     def disconnect(self, func):
         self._connections.remove(func)
 
-    def emit(self, *args):
+    def emit(self, *args, **kwargs):
         for func in self._connections:
-            func(*args)
+            func(*args, **kwargs)
