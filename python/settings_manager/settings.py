@@ -149,6 +149,14 @@ class Settings(object):
 
         return self._data[key]["value"]
 
+    def has_visible(self):
+        """
+        Returns True if any settings are visible to the UI.
+
+        :rtype: bool
+        """
+        return any(not self.properties(s)["hidden"] for s in self._data)
+
     def properties(self, key):
         """
         Returns the setting properties for the given key
@@ -161,6 +169,7 @@ class Settings(object):
             'default': 'setting',
             'hidden': False,
             'label': 'option',
+            'minmax' : (None, None),
             'nullable': False,
             'parent': None,
             'type': <type 'str'>,
