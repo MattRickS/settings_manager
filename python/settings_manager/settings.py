@@ -120,7 +120,7 @@ class Settings(object):
         }
         self._data[name].update(kwargs)
 
-    def dependencies(self, key):
+    def dependents(self, key):
         """
         Yields all settings whose parent property is the given setting name.
         This is not recursive, only lists first generation dependencies.
