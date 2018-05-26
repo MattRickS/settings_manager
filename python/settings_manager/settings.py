@@ -1,4 +1,26 @@
-from settings_manager.custom_signal import Signal
+import json
+import sys
+
+from .custom_signal import Signal
+from collections import OrderedDict
+
+
+def byteify(data):
+    """
+    *** Python 2 only ***
+    Recursively converts all unicode elements in a dict back to string objects.
+
+    :param dict data:
+    :rtype: OrderedDict
+    """
+    if isinstance(data, dict):
+        return OrderedDict(((byteify(key), byteify(value)) for key, value in data.items()))
+    elif isinstance(data, list):
+        return [byteify(element) for element in data]
+    elif isinstance(data, unicode):
+        return data.encode('utf-8')
+    else:
+        return data
 
 
 class SettingsError(Exception):
@@ -314,6 +336,31 @@ class Settings(object):
         from settings_manager.ui import get_default_widget
         return get_default_widget(self, key)
 
+    def to_json(self, path, values_only=False):
+        """
+        Writes the settings to a json file, preserving the settings order.
+        data_type and widget fields will store the name of their values.
+
+        :param str  path:
+        :param bool values_only: If True, only writes the settings names and values
+
+        """
+
+        if values_only:
+            data = OrderedDict(((k, v["value"]) for k, v in self._data.items()))
+        else:
+            data = self._data
+
+        def default(value):
+            """Converts unknown types to strings"""
+            try:
+                return value.__name__  # types / classes / functions
+            except AttributeError:
+                return str(value)
+
+        with open(path, "w") as f:
+            json.dump(data, f, default=default)
+
     def widget(self, *args, **kwargs):
         """
         Retrieves the widget assigned to the settings object, or a default widget.
@@ -327,3 +374,34 @@ class Settings(object):
         # Only import UI when required
         from settings_manager.ui import SettingsViewer
         return SettingsViewer(self, *args, **kwargs)
+
+    @classmethod
+    def from_json(cls, path, scope=None):
+        """
+        Reads the settings from a json file, preserving the settings order.
+
+        WARNING: This uses eval() to retrieve callable methods / classes from
+        the data_type and widget properties. Be sure the data is safe before
+        loading.
+
+        :param str  path:
+        :param dict scope:  The scope to use when evaluating data_type and widget.
+        :rtype: Settings
+        """
+        with open(path, "r") as f:
+            data = json.load(f, object_pairs_hook=OrderedDict)
+
+        # Convert data from unicode to string (python 2 only)
+        if sys.version_info[0] < 3:
+            data = byteify(data)
+
+        # Types are converted to strings in json, evaluate them back to types
+        for setting_data in data.values():
+            if isinstance(setting_data, dict):
+                setting_data["data_type"] = eval(setting_data["data_type"], scope)
+
+                widget = setting_data["widget"]
+                if widget:
+                    setting_data["widget"] = eval(widget, scope)
+
+        return cls(data)
