@@ -24,9 +24,42 @@ class Settings(object):
     """
     settingChanged = Signal(str, object)  # name, value
 
-    def __init__(self):
-        self._data = dict()
+    def __init__(self, settings=None):
+        """
+        :param list|dict    settings:
+            Settings can be accepted in multiple forms to allow for ordering:
+                * Dictionary of properties; {setting_name: {properties}}
+                * Dictionary with single value; {setting_name: value}
+                * List of single dicts; {setting_name: {properties}}
+                * List of single dicts; {setting_name: value}
+                * List of tuples; (setting_name, value)
+        """
+        self._data = OrderedDict()
         self._widget = None
+
+        if isinstance(settings, dict):
+            for setting, data in settings.items():
+                # Dictionary of properties {setting_name: {...}}
+                if isinstance(data, dict):
+                    self.add(setting, **data)
+                # Dictionary with single value {setting_name: value}
+                else:
+                    self.add(setting, data)
+        elif isinstance(settings, list):
+            for item in settings:
+                # List of single dicts, likely from a configuration {setting_name: {...}}
+                if isinstance(item, dict):
+                    for setting, data in item.items():
+                        # List of dicts {setting_name: {properties}}
+                        if isinstance(data, dict):
+                            self.add(setting, **data)
+                        # List of dicts {setting_name: value}
+                        else:
+                            self.add(setting, data)
+                # List of tuples, (setting_name, value)
+                else:
+                    setting, value = item
+                    self.add(setting, value)
 
     def __getitem__(self, item):
         return self.get(item)
@@ -71,7 +104,7 @@ class Settings(object):
             raise SettingsError("Setting already exists: {!r}".format(name))
 
         if not isinstance(name, str):
-            raise SettingsError("Setting keys must be strings")
+            raise SettingsError("Setting keys must be strings: {}".format(name))
 
         if data_type is None and default is None:
             raise SettingsError("Unknown data type for setting {!r}. "
@@ -119,6 +152,23 @@ class Settings(object):
             "widget": widget,
         }
         self._data[name].update(kwargs)
+
+    def as_dict(self, ordered=False, properties=False):
+        """
+        Returns the settings as a dictionary mapping setting_name to value.
+
+        :param bool ordered:     If True, returns an OrderedDict instead of dict
+        :param bool properties:  If True, write full properties instead of just value
+        :rtype: dict
+        """
+        if ordered:
+            if properties:
+                return self._data.copy()
+            return OrderedDict(((s, props["value"]) for s, props in self._data.items()))
+        else:
+            if properties:
+                return dict(self._data)
+            return {setting: properties["value"] for setting, properties in self._data.items()}
 
     def dependents(self, key):
         """
