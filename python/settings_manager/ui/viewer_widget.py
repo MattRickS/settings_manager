@@ -144,12 +144,9 @@ class SettingsViewer(QtWidgets.QDialog):
 
     def _on_none_checkbox_checked(self, setting, state):
         widget = self.get_widget(setting)
-        if state == QtCore.Qt.Checked:
-            widget.setEnabled(False)
-            self._on_setting_changed(setting, False)
-        else:
-            widget.setEnabled(True)
-            self._on_setting_changed(setting, True)
+        value = state != QtCore.Qt.Checked
+        widget.setEnabled(value)
+        self._on_setting_changed(setting, value)
 
     def _on_setting_changed(self, setting, enabled):
         """
@@ -159,6 +156,7 @@ class SettingsViewer(QtWidgets.QDialog):
         :param object   enabled:
         """
         enabled = bool(enabled)
+        self.settings.properties(setting)["enabled"] = enabled
         dependencies = self.settings.dependents(setting)
         for dependency in dependencies:
             # Widget might be hidden / not valid - continue recursing but only set valid widgets

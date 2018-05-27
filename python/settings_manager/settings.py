@@ -80,24 +80,25 @@ class Settings(object):
     def __bool__(self):
         return len(self) > 0
 
-    def add(self, name, default, choices=None, data_type=None, hidden=False,
+    def add(self, name, default, choices=None, data_type=None, enabled=True, hidden=False,
             label=None, minmax=None, nullable=False, parent=None, widget=None, **kwargs):
         """
-        Required
         :param str      name:      The name of the setting. Used to get and set the value.
         :param object   default:   Default value. If None, data_type is required.
 
-        Optional
-        :param list     choices:   A list of fixed values for the setting.
-        :param          data_type: The type of the value. Inferred from default if not given.
-        :param bool     hidden:    Whether or not the setting should be visible.
-        :param str      label:     The display name for the setting. Uses name if not given.
-        :param tuple    minmax:    Tuple of minimum and maximum values for floats or ints.
-        :param bool     nullable:  Whether or not None is a valid value
-        :param str      parent:    Another setting name who's value must evaluate True for this
-                                   setting to be set, and get to return it's value instead of None
-        :param          widget:    A callable object that can return a UI widget to use for this
-                                   setting. If omitted, a default UI will be generated.
+        :param list     choices:    A list of fixed values for the setting.
+        :param          data_type:  The type of the value. Inferred from default if not given.
+        :param bool     enabled:    UI setting. If nullable is True, this determines whether the
+                                    setting should be disabled/enabled.
+        :param bool     hidden:     Whether or not the setting should be visible.
+        :param str      label:      UI setting. The display name for the setting (defaults to name).
+        :param tuple    minmax:     Tuple of minimum and maximum values for floats or ints.
+        :param bool     nullable:   Whether or not None is a valid value.
+        :param str      parent:     Another setting name who's value must evaluate True for this
+                                    setting to be get/set. Calling get() on a setting whose parent
+                                    does not evaluate True will return None.
+        :param          widget:     UI setting. A callable object that can return a UI widget to use
+                                    for this setting. If omitted, a default UI will be generated.
         """
         if name in self._data:
             raise SettingsError("Setting already exists: {!r}".format(name))
@@ -141,6 +142,7 @@ class Settings(object):
         self._data[name] = {
             "choices": choices or list(),
             "default": default,
+            "enabled": enabled,
             "hidden": hidden,
             "label": label or name.replace('_', ' '),
             "minmax": minmax,
@@ -218,13 +220,17 @@ class Settings(object):
     def get(self, key):
         """
         Returns the value for the given setting name.
-        If the key has a parent and the parent value does not evaluate True, returns None
+        If the key is disabled of has a parent whose value is False, returns None.
 
         :raises: KeyError if key is not a valid setting
 
         :param str key:
         """
-        # Only return value if it has no parent, or parent evaluates to True
+        # Check if disabled
+        if not self._data[key]["enabled"]:
+            return None
+
+        # Check if parent evaluates to False
         parent = self._data[key]["parent"]
         if parent:
             if not self.get(parent):
