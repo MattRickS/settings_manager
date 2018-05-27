@@ -1,15 +1,17 @@
 from settings_manager import Settings
+from settings_manager.ui import show_settings
 from Qt import QtCore, QtGui, QtWidgets
-import sys
 
 
+# Define custom widget as class
 class MultiLineSettings(QtWidgets.QPlainTextEdit):
     def __init__(self, settings, setting_name):
         super(MultiLineSettings, self).__init__()
         self.settings = settings
         self.setting_name = setting_name
 
-        value = self.settings.get(setting_name)
+        # Better to use the property directly in case value is disabled
+        value = settings.properties(setting_name)["value"]
         if value:
             self.setPlainText(str(value))
 
@@ -19,20 +21,28 @@ class MultiLineSettings(QtWidgets.QPlainTextEdit):
         self.settings.set(self.setting_name, self.toPlainText())
 
 
-settings = Settings()
-settings.add("enable_options", True, label="Enable Options?")
-settings.add("number_of_tries", 1, label="Number of Tries", minmax=(1, 5), parent="enable_options")
-settings.add("options", "down", choices=["up", "down", "left", "right"], parent="enable_options")
-settings.add("custom_command", None, data_type=str,
-             label="Custom Command", widget=MultiLineSettings)
-settings.add("valid_items", ["value 1", "value 2", "value 3"])
+# Define custom widget as function
+def plain_text_edit(settings, setting_name):
+    editor = QtWidgets.QPlainTextEdit()
 
-app = QtWidgets.QApplication(sys.argv)
-widget = settings.widget()
-widget.show()
-app.exec_()
+    # Better to use the property directly in case value is disabled
+    value = settings.properties(setting_name)["value"]
+    if value:
+        editor.setPlainText(str(value))
 
-for setting in settings:
-    sys.stdout.write("{} : {}\n".format(setting, settings.get(setting)))
+    def _on_plain_text_changed():
+        settings.set(setting_name, editor.toPlainText())
 
-sys.exit()
+    editor.textChanged.connect(_on_plain_text_changed)
+    return editor
+
+
+if __name__ == '__main__':
+    # Check and see -- they both work the same
+    s = Settings()
+    s.add("enable_options", True, label="Enable Options?")
+    s.add("multi_line_class", 'Line 1\nLine 2', label="Multi Line Class",
+          nullable=True, parent="enable_options", widget=MultiLineSettings)
+    s.add("multi_line_method", 'Line 1\nLine 2', label="Multi Line Method",
+          nullable=True, parent="enable_options", widget=plain_text_edit)
+    show_settings(s)
