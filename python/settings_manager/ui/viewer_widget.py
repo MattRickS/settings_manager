@@ -26,11 +26,17 @@ class SettingsViewer(QtWidgets.QWidget):
             >>>         self.settings.set(setting, value)
     """
 
-    def __init__(self, settings_obj, parent=None, prefix=""):
+    def __init__(self, settings_obj, parent=None, prefix="", skip=None):
+        """
+        :param Settings             settings_obj:   Settings object to build for
+        :param QtWidgets.QWidget    parent:         Parent widget
+        :param str                  prefix:         Name to prefix all setting with (Default blank)
+        :param list[str]            skip:           List of setting names to ignore
+        """
         super(SettingsViewer, self).__init__(parent)
         self.prefix = prefix
         self.settings = settings_obj
-        layout = self._build_default_layout(settings_obj)
+        layout = self._build_default_layout(settings_obj, skip=skip)
         self.setLayout(layout)
 
     def get_widget(self, setting):
@@ -40,45 +46,62 @@ class SettingsViewer(QtWidgets.QWidget):
         :param str setting:
         :rtype: QtWidgets.QWidget
         """
-        name = self.prefix + self.settings.properties(setting)["label"]
-        for label_item, widget_item in self.iter_widgets():
-            if label_item.widget().text() == name:
-                return widget_item.widget()
+        name = self.settings.properties(setting)["label"]
+        for label, widget, checkbox in self.iter_widgets():
+            if label == name:
+                return widget
 
     def iter_widgets(self):
         """
-        Iterates through (label, widget) pairs. Note, label will be prefix + setting.
+        Iterates through (setting_label, widget, checkbox/None) tuples
         """
+        prefix_len = len(self.prefix)
         for i in range(self.layout().rowCount()):
-            yield self.layout().itemAtPosition(i, 0), self.layout().itemAtPosition(i, 1)
+            label_item = self.layout().itemAtPosition(i, 0)
+            widget_item = self.layout().itemAtPosition(i, 1)
+            checkbox_item = self.layout().itemAtPosition(i, 2)
+
+            checkbox_widget = checkbox_item.widget() if checkbox_item else None
+            setting_label = label_item.widget().text()[prefix_len:]
+
+            yield setting_label, widget_item.widget(), checkbox_widget
 
     # -----------------------------------------------------------------
     #                            PROTECTED
     # -----------------------------------------------------------------
 
-    def _build_default_layout(self, settings_obj):
+    def _build_default_layout(self, settings_obj, skip=None):
         """
         Builds a default grid layout for the UI.
 
         :param Settings settings_obj:
         :rtype: QtWidgets.QGridLayout
         """
+        skip = skip or list()
         layout = QtWidgets.QGridLayout()
 
-        # Order so that children are after their parents
+        # Order so that children are placed immediately after their parents
         ordered = list()
-        for setting in sorted(settings_obj):
-            parent = self.settings.properties(setting)["parent"]
-            if parent and parent not in ordered:
-                ordered.append(parent)
-            if setting not in ordered:
-                ordered.append(setting)
+        settings = list(settings_obj)
 
-        for row, name in enumerate(ordered):
+        def add_setting(setting):
+            for dependent in self.settings.dependents(setting):
+                settings.remove(dependent)
+                ordered.append(dependent)
+                add_setting(dependent)
+
+        while settings:
+            setting = settings.pop(0)
+            ordered.append(setting)
+            add_setting(setting)
+
+        # Count ourselves instead of enumerate to avoid invalid rows when skipping
+        row = 0
+        for name in ordered:
             properties = self.settings.properties(name)
 
             # Get the widget if required
-            if properties["hidden"] or properties["data_type"] == object:
+            if properties["hidden"] or properties["data_type"] == object or name in skip:
                 continue
 
             # Setup a separate label for the widget
@@ -105,6 +128,8 @@ class SettingsViewer(QtWidgets.QWidget):
 
                 null_checkbox.stateChanged.connect(partial(self._on_none_checkbox_checked, name))
                 layout.addWidget(null_checkbox, row, 2)
+
+            row += 1
 
         # This would be so much easier if children were edited when parent changed
         self.settings.settingChanged.connect(self._on_setting_changed)
@@ -134,9 +159,11 @@ class SettingsViewer(QtWidgets.QWidget):
         :param object   enabled:
         """
         enabled = bool(enabled)
-        dependencies = self.settings.dependencies(setting)
+        dependencies = self.settings.dependents(setting)
         for dependency in dependencies:
+            # Widget might be hidden / not valid - continue recursing but only set valid widgets
             widget = self.get_widget(dependency)
-            widget.setEnabled(enabled)
+            if widget:
+                widget.setEnabled(enabled)
             # Recursively update grandchildren
             self._on_setting_changed(dependency, enabled)
