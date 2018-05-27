@@ -58,30 +58,7 @@ class Settings(object):
         """
         self._data = OrderedDict()
         self._widget = None
-
-        if isinstance(settings, dict):
-            for setting, data in settings.items():
-                # Dictionary of properties {setting_name: {...}}
-                if isinstance(data, dict):
-                    self.add(setting, **data)
-                # Dictionary with single value {setting_name: value}
-                else:
-                    self.add(setting, data)
-        elif isinstance(settings, list):
-            for item in settings:
-                # List of single dicts, likely from a configuration {setting_name: {...}}
-                if isinstance(item, dict):
-                    for setting, data in item.items():
-                        # List of dicts {setting_name: {properties}}
-                        if isinstance(data, dict):
-                            self.add(setting, **data)
-                        # List of dicts {setting_name: value}
-                        else:
-                            self.add(setting, data)
-                # List of tuples, (setting_name, value)
-                else:
-                    setting, value = item
-                    self.add(setting, value)
+        self.add_settings(settings)
 
     def __getitem__(self, item):
         return self.get(item)
@@ -174,6 +151,40 @@ class Settings(object):
             "widget": widget,
         }
         self._data[name].update(kwargs)
+
+    def add_settings(self, settings):
+        """
+        :param list|dict    settings:
+            Settings can be accepted in multiple forms to allow for ordering:
+                * Dictionary of properties; {setting_name: {properties}}
+                * Dictionary with single value; {setting_name: value}
+                * List of single dicts; {setting_name: {properties}}
+                * List of single dicts; {setting_name: value}
+                * List of tuples; (setting_name, value)
+        """
+        if isinstance(settings, dict):
+            for setting, data in settings.items():
+                # Dictionary of properties {setting_name: {...}}
+                if isinstance(data, dict):
+                    self.add(setting, **data)
+                # Dictionary with single value {setting_name: value}
+                else:
+                    self.add(setting, data)
+        elif isinstance(settings, list):
+            for item in settings:
+                # List of single dicts, likely from a configuration {setting_name: {...}}
+                if isinstance(item, dict):
+                    for setting, data in item.items():
+                        # List of dicts {setting_name: {properties}}
+                        if isinstance(data, dict):
+                            self.add(setting, **data)
+                        # List of dicts {setting_name: value}
+                        else:
+                            self.add(setting, data)
+                # List of tuples, (setting_name, value)
+                else:
+                    setting, value = item
+                    self.add(setting, value)
 
     def as_dict(self, ordered=False, properties=False):
         """
