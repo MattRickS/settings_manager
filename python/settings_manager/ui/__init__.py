@@ -32,20 +32,22 @@ def get_default_widget(settings, key):
 def show_settings(settings, *args, **kwargs):
     """
     Displays the settings UI. If no QApplication instance is available, one is
-    created for the lifetime of the UI.
+    initialised.
     Additional arguments are passed directly to the Settings.widget() method.
 
     :param Settings settings:
-    :return: QWidget if QApplication instance exists, else None
+    :rtype: QWidget
     """
     from Qt import QtWidgets
 
     app = None if QtWidgets.QApplication.instance() else QtWidgets.QApplication([])
 
     widget = settings.widget(*args, **kwargs)
-    widget.show()
 
     if app:
+        widget.show()
         app.exec_()
+        return widget
     else:
+        widget.exec_()
         return widget

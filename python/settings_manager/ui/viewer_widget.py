@@ -2,7 +2,7 @@ from Qt import QtWidgets, QtCore, QtGui
 from functools import partial
 
 
-class SettingsViewer(QtWidgets.QWidget):
+class SettingsViewer(QtWidgets.QDialog):
     """
     Default widget for the settings object.
 
