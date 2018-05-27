@@ -54,8 +54,9 @@ class BoolSetting(QtWidgets.QCheckBox):
         self.settings = settings
         self.setting_name = setting_name
 
-        # Set starting value
-        value = self.settings.get(setting_name)
+        # Set starting value -- nullable settings would be blank if using get(),
+        # use value property directly and let it be disabled
+        value = self.settings.properties(self.setting_name)["value"]
         if value:
             self.setCheckState(QtCore.Qt.Checked)
 
@@ -87,8 +88,9 @@ class ChoiceSetting(QtWidgets.QComboBox):
         properties = self.settings.properties(self.setting_name)
         self.addItems(list(map(str, properties["choices"])))
 
-        # Set starting value
-        value = self.settings.get(self.setting_name)
+        # Set starting value -- nullable settings would be blank if using get(),
+        # use value property directly and let it be disabled
+        value = self.settings.properties(self.setting_name)["value"]
         if value:
             index = self.findText(str(value))
             self.setCurrentIndex(index)
@@ -115,8 +117,9 @@ class FloatSetting(QtWidgets.QDoubleSpinBox):
         self.settings = settings
         self.setting_name = setting_name
 
-        # Set starting value
-        value = self.settings.get(setting_name)
+        # Set starting value -- nullable settings would be blank if using get(),
+        # use value property directly and let it be disabled
+        value = self.settings.properties(self.setting_name)["value"]
         if value:
             self.setValue(value)
 
@@ -148,8 +151,9 @@ class IntSetting(QtWidgets.QSpinBox):
         self.settings = settings
         self.setting_name = setting_name
 
-        # Set starting value
-        value = self.settings.get(setting_name)
+        # Set starting value -- nullable settings would be blank if using get(),
+        # use value property directly and let it be disabled
+        value = self.settings.properties(self.setting_name)["value"]
         if value:
             self.setValue(value)
 
@@ -205,8 +209,9 @@ class ListSetting(QtWidgets.QWidget):
 
         # ----- Initialise -----
 
-        # Set starting value
-        value = self.settings.get(self.setting_name)
+        # Set starting value -- nullable settings would be blank if using get(),
+        # use value property directly and let it be disabled
+        value = self.settings.properties(self.setting_name)["value"]
         if value:
             self.list_widget.addItems([str(x) for x in value])
 
@@ -249,8 +254,9 @@ class StringSetting(QtWidgets.QLineEdit):
         self.settings = settings
         self.setting_name = setting_name
 
-        # Set starting value
-        value = self.settings.get(setting_name)
+        # Set starting value -- nullable settings would be blank if using get(),
+        # use value property directly and let it be disabled
+        value = self.settings.properties(self.setting_name)["value"]
         if value:
             self.setText(value)
 
