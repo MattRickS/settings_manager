@@ -188,6 +188,46 @@ class Settings(object):
                     setting, value = item
                     self.add(setting, value)
 
+    def as_argparser(self, keys=None, hidden=False):
+        """
+        Create an ArgumentParser for the current settings.
+
+        :param list[str]    keys:   Restricts args to keys if given.
+        :param bool         hidden: If true, includes hidden keys
+        :return:
+        """
+        import argparse
+        parser = argparse.ArgumentParser()
+
+        for key, properties in self._data.items():
+            if keys:
+                if key not in keys:
+                    continue
+            elif not hidden and properties['hidden']:
+                continue
+
+            default = properties['default']
+            data_type = properties['data_type']
+            choices = properties['choices']
+
+            args = {}
+            if data_type == bool:
+                args['action'] = 'store_false' if default else 'store_true'
+            elif data_type == list:
+                args['nargs'] = '*'
+            elif data_type != str:
+                args['type'] = data_type
+
+            if default is not None:
+                args['default'] = default
+
+            if choices:
+                args['choices'] = choices
+
+            parser.add_argument('--' + key, **args)
+
+        return parser
+
     def as_dict(self, ordered=False, properties=False):
         """
         Returns the settings as a dictionary mapping setting_name to value.
@@ -261,7 +301,7 @@ class Settings(object):
             'minmax' : (None, None),
             'nullable': False,
             'parent': None,
-            'type': <type 'str'>,
+            'data_type': <type 'str'>,
             'value': 'setting',
             'widget': None,
         }
