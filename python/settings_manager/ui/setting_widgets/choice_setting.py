@@ -3,18 +3,17 @@ from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
 
 
 class ChoiceSetting(QtWidgets.QComboBox, BaseSettingsUI):
-    def __init__(self, settings, setting_name, parent=None):
+    def __init__(self, setting, parent=None):
         """
-        :param Settings settings:
-        :param str      setting_name:
+        :param Setting setting:
         """
         super(ChoiceSetting, self).__init__(parent)
 
         # Initialise choices
-        properties = settings.properties(setting_name)
-        self.addItems(list(map(str, properties["choices"])))
+        choices = setting.property('choices')
+        self.addItems(list(map(str, choices)))
 
-        BaseSettingsUI.__init__(self, settings, setting_name)
+        BaseSettingsUI.__init__(self, setting)
 
         self.currentTextChanged.connect(self.settingChanged.emit)
 
@@ -31,9 +30,8 @@ if __name__ == '__main__':
     import sys
     app = QtWidgets.QApplication(sys.argv)
 
-    widget = ChoiceSetting(s, 'choice')
+    widget = ChoiceSetting(s.setting('choice'))
     widget.show()
 
     app.exec_()
-    print(s.as_dict())
-    print(widget.settings.as_dict())
+    print(s.as_dict(values_only=True))

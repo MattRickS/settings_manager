@@ -1,7 +1,8 @@
 import json
 import sys
 
-from .custom_signal import Signal
+from settings_manager.custom_signal import Signal
+from settings_manager.setting import Setting
 from collections import OrderedDict
 
 
@@ -56,7 +57,7 @@ class Settings(object):
                 * List of single dicts; {setting_name: value}
                 * List of tuples; (setting_name, value)
         """
-        self._data = OrderedDict()
+        self._settings = OrderedDict()
         self._widget = None
         self.add_settings(settings)
 
@@ -64,10 +65,10 @@ class Settings(object):
         return self.get(item)
 
     def __iter__(self):
-        return iter(self._data)
+        return iter(self._settings)
 
     def __len__(self):
-        return len(self._data)
+        return len(self._settings)
 
     def __setitem__(self, key, value):
         self.set(key, value)
@@ -80,8 +81,9 @@ class Settings(object):
     def __bool__(self):
         return len(self) > 0
 
-    def add(self, name, default, choices=None, data_type=None, enabled=True, hidden=False,
-            label=None, minmax=None, nullable=False, parent=None, widget=None, **kwargs):
+    def add(self, name, default, choices=None, data_type=None,
+            enabled=True, hidden=False, label=None, minmax=None,
+            nullable=False, parent=None, tooltip='', widget=None, **kwargs):
         """
         :param str      name:      The name of the setting. Used to get and set the value.
         :param object   default:   Default value. If None, data_type is required.
@@ -94,65 +96,23 @@ class Settings(object):
         :param str      label:      UI setting. The display name for the setting (defaults to name).
         :param tuple    minmax:     Tuple of minimum and maximum values for floats or ints.
         :param bool     nullable:   Whether or not None is a valid value.
-        :param str      parent:     Another setting name who's value must evaluate True for this
+        :param Setting  parent:     Another setting who's value must evaluate True for this
                                     setting to be get/set. Calling get() on a setting whose parent
                                     does not evaluate True will return None.
+        :param bool     tooltip:    Description message for widget tooltip and parser help
         :param          widget:     UI setting. A callable object that can return a UI widget to use
                                     for this setting. If omitted, a default UI will be generated.
+        :rtype: Setting
         """
-        if name in self._data:
+        if name in self._settings:
             raise SettingsError("Setting already exists: {!r}".format(name))
-
-        if not isinstance(name, str):
-            raise SettingsError("Setting keys must be strings: {}".format(name))
-
-        if data_type is None and default is None:
-            raise SettingsError("Unknown data type for setting {!r}. "
-                                "Must specify a data type or valid default value".format(name))
-
-        if data_type and default is not None and not isinstance(default, data_type):
-            raise SettingsError(
-                "Default value does not match data type for setting {!r}".format(name))
-
-        data_type = data_type or type(default)
-
-        if choices and not all(isinstance(c, data_type) for c in choices):
-            raise SettingsError(
-                "Invalid choices for setting {!r}. "
-                "Not all choices match the data type: {}".format(name, data_type))
-
-        if choices and default not in choices:
-            raise SettingsError(
-                "Default value is not one of the given choices for setting {!r}".format(name))
-
-        if parent is not None and parent not in self._data:
-            raise SettingsError(
-                "Parent {!r} does not exist when adding setting: {!r}".format(parent, name))
-
-        if minmax is not None:
-            try:
-                lo, hi = minmax
-                if not lo <= default <= hi:
-                    raise SettingsError(
-                        "Setting {!r} value is not in minmax range: {}".format(name, minmax))
-            except (ValueError, TypeError):
-                raise SettingsError(
-                    "minmax property is not a valid value. Must be tuple of 2 numeric values.")
-
-        self._data[name] = {
-            "choices": choices or list(),
-            "default": default,
-            "enabled": enabled,
-            "hidden": hidden,
-            "label": label or name.replace('_', ' '),
-            "minmax": minmax,
-            "nullable": nullable or (default is None),
-            "parent": parent,
-            "data_type": data_type,
-            "value": default,
-            "widget": widget,
-        }
-        self._data[name].update(kwargs)
+        setting = Setting(name, default, choices=choices, data_type=data_type,
+                          enabled=enabled, hidden=hidden, label=label,
+                          minmax=minmax, nullable=nullable, parent=parent,
+                          tooltip=tooltip, widget=widget, **kwargs)
+        setting.settingChanged.connect(self.settingChanged)
+        self._settings[name] = setting
+        return setting
 
     def add_settings(self, settings):
         """
@@ -196,54 +156,34 @@ class Settings(object):
         :param bool         hidden: If true, includes hidden keys
         :return:
         """
+        # Uses for argparse in normal runtime are extremely limited, import only
+        # when required
         import argparse
         parser = argparse.ArgumentParser()
 
-        for key, properties in self._data.items():
+        for setting in self._settings.values():
             if keys:
-                if key not in keys:
+                if setting.name not in keys:
                     continue
-            elif not hidden and properties['hidden']:
+            elif not hidden and setting.property('hidden'):
                 continue
 
-            default = properties['default']
-            data_type = properties['data_type']
-            choices = properties['choices']
-
-            args = {}
-            if data_type == bool:
-                args['action'] = 'store_false' if default else 'store_true'
-            elif data_type == list:
-                args['nargs'] = '*'
-            elif data_type != str:
-                args['type'] = data_type
-
-            if default is not None:
-                args['default'] = default
-
-            if choices:
-                args['choices'] = choices
-
-            parser.add_argument('--' + key, **args)
+            args = setting.as_parser_args()
+            parser.add_argument('--' + setting.name, **args)
 
         return parser
 
-    def as_dict(self, ordered=False, properties=False):
+    def as_dict(self, ordered=False, values_only=False):
         """
         Returns the settings as a dictionary mapping setting_name to value.
 
         :param bool ordered:     If True, returns an OrderedDict instead of dict
-        :param bool properties:  If True, write full properties instead of just value
+        :param bool values_only: If True, only writes values instead of full properties
         :rtype: dict
         """
-        if ordered:
-            if properties:
-                return self._data.copy()
-            return OrderedDict(((s, props["value"]) for s, props in self._data.items()))
-        else:
-            if properties:
-                return dict(self._data)
-            return {setting: properties["value"] for setting, properties in self._data.items()}
+        items = ((s.name, s.get()) if values_only else (s.name, s.as_dict()) for s in self._settings.values())
+        data_type = OrderedDict if ordered else dict
+        return data_type(items)
 
     def dependents(self, key):
         """
@@ -253,8 +193,8 @@ class Settings(object):
         :param str key:
         :rtype: str
         """
-        for setting in self._data:
-            if self.properties(setting)["parent"] == key:
+        for setting in self._settings.values():
+            if setting.property('parent') == key:
                 yield setting
 
     def get(self, key):
@@ -266,17 +206,7 @@ class Settings(object):
 
         :param str key:
         """
-        # Check if disabled
-        if not self._data[key]["enabled"]:
-            return None
-
-        # Check if parent evaluates to False
-        parent = self._data[key]["parent"]
-        if parent:
-            if not self.get(parent):
-                return None
-
-        return self._data[key]["value"]
+        return self._settings[key].get()
 
     def has_visible(self):
         """
@@ -284,34 +214,18 @@ class Settings(object):
 
         :rtype: bool
         """
-        return any(not self.properties(s)["hidden"] for s in self._data)
+        return any(not s.property('hidden') for s in self._settings.values())
 
     def properties(self, key):
         """
         Returns the setting properties for the given key
 
-        >>> s = Settings()
-        >>> s.add("option", "setting")
-        >>> s.properties("option")
-        {
-            'choices': None,
-            'default': 'setting',
-            'hidden': False,
-            'label': 'option',
-            'minmax' : (None, None),
-            'nullable': False,
-            'parent': None,
-            'data_type': <type 'str'>,
-            'value': 'setting',
-            'widget': None,
-        }
-
         :raises: KeyError if key is not a valid setting
 
-        :param str key: The setting name to return properties for
+        :param str key: Name of setting to return properties for
         :rtype: dict
         """
-        return self._data[key]
+        return self._settings[key].as_dict()
 
     def reset(self):
         """
@@ -319,9 +233,8 @@ class Settings(object):
 
         :return:
         """
-        for key in self._data:
-            properties = self.properties(key)
-            self.set(key, properties["default"])
+        for setting in self._settings.values():
+            setting.set(setting.property('default'))
 
     def set(self, key, value):
         """
@@ -333,39 +246,11 @@ class Settings(object):
         :param object value:
         """
         # Ensure the setting exists
-        if key not in self._data:
+        setting = self._settings.get(key)
+        if setting is None:
             raise SettingsError("No setting exists for: {!r}".format(key))
 
-        properties = self.properties(key)
-
-        # Ensure type is valid
-        data_type = properties["data_type"]
-        nullable = properties["nullable"]
-        if not isinstance(value, data_type) and not (value is None and nullable):
-            raise SettingsError("Invalid value type {!r} for setting {!r}".format(value, key))
-
-        # Ensure value is a valid option
-        choices = properties["choices"]
-        if choices and value not in choices and not (value is None and nullable):
-            raise SettingsError(
-                "Value {!r} is not a valid choice for setting {!r}".format(value, key))
-
-        # Only return value if it has no parent, or parent evaluates to True
-        parent = properties["parent"]
-        if parent:
-            if not self.get(parent):
-                raise SettingsError(
-                    "Setting {!r} cannot be set, parent {!r} is not valid".format(key, parent))
-
-        minmax = properties["minmax"]
-        if data_type in (float, int) and minmax is not None:
-            lo, hi = minmax
-            if not lo <= value <= hi:
-                raise SettingsError(
-                    "Value does not fit in range {} for setting: {!r}".format(minmax, key))
-
-        self._data[key]["value"] = value
-        self.settingChanged.emit(key, value)
+        setting.set(value)
 
     def set_widget(self, widget_callable):
         """
@@ -377,6 +262,13 @@ class Settings(object):
         """
         self._widget = widget_callable
 
+    def setting(self, key):
+        """
+        :param str  key:
+        :rtype: Setting
+        """
+        return self._settings.get(key)
+
     def setting_widget(self, key, *args, **kwargs):
         """
         Retrieves the widget assigned to the given setting, or a default widget.
@@ -385,28 +277,18 @@ class Settings(object):
         :param str key:
         :return: UI Widget object
         """
-        widget = self.properties(key)["widget"]
-        if widget:
-            return widget(self, key, *args, **kwargs)
+        return self._settings.get(key).widget(*args, **kwargs)
 
-        # Only import UI when required
-        from settings_manager.ui import get_default_widget
-        return get_default_widget(self, key)
-
-    def to_json(self, path, values_only=False):
+    def to_json(self, ordered=True, values_only=False):
         """
-        Writes the settings to a json file, preserving the settings order.
-        data_type and widget fields will store the name of their values.
+        Writes the settings to a json object. Unrecognised objects will be
+        converted to their __name__ attribute if available, otherwise to __str__
 
-        :param str  path:
+        :param bool ordered:     If True, preserves the settings order
         :param bool values_only: If True, only writes the settings names and values
 
         """
-
-        if values_only:
-            data = OrderedDict(((k, v["value"]) for k, v in self._data.items()))
-        else:
-            data = self._data
+        data = self.as_dict(ordered=ordered, values_only=values_only)
 
         def default(value):
             """Converts unknown types to strings"""
@@ -415,8 +297,7 @@ class Settings(object):
             except AttributeError:
                 return str(value)
 
-        with open(path, "w") as f:
-            json.dump(data, f, default=default)
+        return json.dumps(data, default=default)
 
     def widget(self, *args, **kwargs):
         """

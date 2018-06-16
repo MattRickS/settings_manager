@@ -3,16 +3,14 @@ from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
 
 
 class IntSetting(QtWidgets.QSpinBox, BaseSettingsUI):
-    def __init__(self, settings, setting_name, parent=None):
+    def __init__(self, setting, parent=None):
         """
-        :param Settings settings:
-        :param str      setting_name:
+        :param Setting setting:
         """
         super(IntSetting, self).__init__(parent)
-        BaseSettingsUI.__init__(self, settings, setting_name)
+        BaseSettingsUI.__init__(self, setting)
 
-        properties = self.settings.properties(setting_name)
-        minmax = properties["minmax"]
+        minmax = setting.property('minmax')
         if minmax:
             lo, hi = minmax
             self.setMinimum(int(lo))

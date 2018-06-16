@@ -3,13 +3,12 @@ from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
 
 
 class BoolSetting(QtWidgets.QCheckBox, BaseSettingsUI):
-    def __init__(self, settings, setting_name, parent=None):
+    def __init__(self, setting, parent=None):
         """
-        :param Settings settings:
-        :param str      setting_name:
+        :param Setting setting:
         """
         super(BoolSetting, self).__init__(parent)
-        BaseSettingsUI.__init__(self, settings, setting_name)
+        BaseSettingsUI.__init__(self, setting)
 
         # Connection
         self.stateChanged.connect(self.settingChanged.emit)
@@ -25,7 +24,7 @@ class BoolSetting(QtWidgets.QCheckBox, BaseSettingsUI):
 
     def onSettingChanged(self, value):
         value = True if value == QtCore.Qt.Checked else False
-        self._settings.set(self._setting_name, value)
+        self._setting.set(value)
 
 
 if __name__ == '__main__':
@@ -37,10 +36,9 @@ if __name__ == '__main__':
     import sys
     app = QtWidgets.QApplication(sys.argv)
 
-    widget = BoolSetting(s, 'bool')
+    widget = BoolSetting(s.setting('bool'))
     widget.show()
 
     app.exec_()
-    print(s.as_dict())
-    print(widget.settings.as_dict())
+    print(s.as_dict(values_only=True))
 

@@ -35,9 +35,13 @@ class SettingsViewer(QtWidgets.QDialog):
         """
         super(SettingsViewer, self).__init__(parent)
         self.prefix = prefix
-        self.settings = settings_obj
+        self._settings = settings_obj
         layout = self._build_default_layout(settings_obj, skip=skip)
         self.setLayout(layout)
+
+    @property
+    def settings(self):
+        return self._settings
 
     def get_widget(self, setting):
         """
@@ -46,7 +50,7 @@ class SettingsViewer(QtWidgets.QDialog):
         :param str setting:
         :rtype: QtWidgets.QWidget
         """
-        name = self.settings.properties(setting)["label"]
+        name = self._settings.setting(setting).property("label")
         for label, widget, checkbox in self.iter_widgets():
             if label == name:
                 return widget
@@ -80,37 +84,26 @@ class SettingsViewer(QtWidgets.QDialog):
         skip = skip or list()
         layout = QtWidgets.QGridLayout()
 
-        # Order so that children are placed immediately after their parents
-        ordered = list()
-        settings = list(settings_obj)
-
-        def add_setting(setting):
-            for dependent in self.settings.dependents(setting):
-                settings.remove(dependent)
-                ordered.append(dependent)
-                add_setting(dependent)
-
-        while settings:
-            setting = settings.pop(0)
-            ordered.append(setting)
-            add_setting(setting)
-
         # Count ourselves instead of enumerate to avoid invalid rows when skipping
         row = 0
-        for name in ordered:
-            properties = self.settings.properties(name)
+        for name in self._settings:
+            setting = self._settings.setting(name)
+
+            hidden = setting.property('hidden')
+            data_type = setting.property('data_type')
 
             # Get the widget if required
-            if properties["hidden"] or properties["data_type"] == object or name in skip:
+            if hidden or data_type == object or name in skip:
                 continue
 
             # Setup a separate label for the widget
-            label = QtWidgets.QLabel(self.prefix + properties["label"])
+            label = setting.property('label')
+            label = QtWidgets.QLabel(self.prefix + label)
 
             # Get the widget defined by the setting - may be user defined
-            widget = settings_obj.setting_widget(name)
-            parent = properties["parent"]
-            if parent and not self.settings.get(parent):
+            widget = setting.widget()
+            parent = setting.property('parent')
+            if parent and not parent.get():
                 widget.setEnabled(False)
 
             # Add to Layout
@@ -118,7 +111,7 @@ class SettingsViewer(QtWidgets.QDialog):
             layout.addWidget(widget, row, 1)
 
             # If nullable, add a checkbox to disable the value
-            if properties["nullable"]:
+            if setting.property('nullable'):
                 null_checkbox = QtWidgets.QCheckBox("None")
 
                 # Initial state
@@ -132,7 +125,7 @@ class SettingsViewer(QtWidgets.QDialog):
             row += 1
 
         # This would be so much easier if children were edited when parent changed
-        self.settings.settingChanged.connect(self._on_setting_changed)
+        self.settings.settingChanged.connect(self.onSettingChanged)
 
         layout.setColumnStretch(1, 1)
 
@@ -146,9 +139,9 @@ class SettingsViewer(QtWidgets.QDialog):
         widget = self.get_widget(setting)
         value = state != QtCore.Qt.Checked
         widget.setEnabled(value)
-        self._on_setting_changed(setting, value)
+        self.onSettingChanged(setting, value)
 
-    def _on_setting_changed(self, setting, enabled):
+    def onSettingChanged(self, setting, enabled):
         """
         Recursively update the enabled state of all dependent settings
 
@@ -156,7 +149,7 @@ class SettingsViewer(QtWidgets.QDialog):
         :param object   enabled:
         """
         enabled = bool(enabled)
-        self.settings.properties(setting)["enabled"] = enabled
+        self._settings.properties(setting)["enabled"] = enabled
         dependencies = self.settings.dependents(setting)
         for dependency in dependencies:
             # Widget might be hidden / not valid - continue recursing but only set valid widgets
@@ -164,4 +157,4 @@ class SettingsViewer(QtWidgets.QDialog):
             if widget:
                 widget.setEnabled(enabled)
             # Recursively update grandchildren
-            self._on_setting_changed(dependency, enabled)
+            self.onSettingChanged(dependency, enabled)

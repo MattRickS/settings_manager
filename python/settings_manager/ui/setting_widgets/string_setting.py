@@ -3,13 +3,12 @@ from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
 
 
 class StringSetting(QtWidgets.QLineEdit, BaseSettingsUI):
-    def __init__(self, settings, setting_name):
+    def __init__(self, setting):
         """
-        :param Settings settings:
-        :param str      setting_name:
+        :param Setting setting:
         """
         super(StringSetting, self).__init__()
-        BaseSettingsUI.__init__(self, settings, setting_name)
+        BaseSettingsUI.__init__(self, setting)
 
         self.textChanged.connect(self.settingChanged.emit)
 
@@ -18,8 +17,8 @@ class StringSetting(QtWidgets.QLineEdit, BaseSettingsUI):
 
     def onSettingChanged(self, value):
         # Convert to data type to keep encoding
-        data_type = self._settings.properties(self._setting_name)["data_type"]
-        self._settings.set(self._setting_name, data_type(value))
+        data_type = self._setting.property('data_type')
+        self._setting.set(data_type(value))
 
 
 if __name__ == '__main__':
@@ -31,10 +30,9 @@ if __name__ == '__main__':
     import sys
     app = QtWidgets.QApplication(sys.argv)
 
-    widget = StringSetting(s, 'string')
+    widget = StringSetting(s.setting('string'))
     widget.show()
 
     app.exec_()
-    print(s.as_dict())
-    print(widget.settings.as_dict())
+    print(s.as_dict(values_only=True))
 

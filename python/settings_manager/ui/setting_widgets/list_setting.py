@@ -32,14 +32,13 @@ class EnterItemDialog(QtWidgets.QDialog):
 
 
 class ListSetting(QtWidgets.QWidget, BaseSettingsUI):
-    def __init__(self, settings, setting_name):
+    def __init__(self, setting):
         """
-        :param Settings settings:
-        :param str      setting_name:
+        :param Setting setting:
         """
         super(ListSetting, self).__init__()
         self.list_widget = QtWidgets.QListWidget()
-        BaseSettingsUI.__init__(self, settings, setting_name)
+        BaseSettingsUI.__init__(self, setting)
 
         # ----- Widgets -----
 
@@ -80,7 +79,7 @@ class ListSetting(QtWidgets.QWidget, BaseSettingsUI):
             text = self.list_widget.item(row).text()
             lst.append(text)
 
-        self._settings.set(self._setting_name, lst)
+        self._setting.set(lst)
 
     def _on_add_btn_clicked(self):
         enter_item = EnterItemDialog()
@@ -105,10 +104,9 @@ if __name__ == '__main__':
     import sys
     app = QtWidgets.QApplication(sys.argv)
 
-    widget = ListSetting(s, 'list')
+    widget = ListSetting(s.setting('list'))
     widget.show()
 
     app.exec_()
-    print(s.as_dict())
-    print(widget.settings.as_dict())
+    print(s.as_dict(values_only=True))
 
