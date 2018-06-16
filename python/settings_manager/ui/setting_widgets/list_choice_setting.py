@@ -1,76 +1,39 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
-
-"""
-WIP
-
-Make the display show the names of selected items (elided).
-
-Example:
-  [item 1, item 2, ite...]
-    [x] item 1
-    [x] item 2
-    [x] item 3
-    [ ] item 4
-    [ ] item 5
-"""
+from settings_manager.ui.checkable_combo_box import CheckableComboBox
 
 
-class CheckableComboBox(QtWidgets.QComboBox):
-    def __init__(self, parent=None):
-        super(CheckableComboBox, self).__init__(parent)
-        self.view().pressed.connect(self.handleItemPressed)
-        self._changed = False
+class ListChoiceSetting(CheckableComboBox, BaseSettingsUI):
+    def __init__(self, setting, parent=None):
+        super(ListChoiceSetting, self).__init__(parent)
+        self.addItems(['a', 'b', 'c'])
+        BaseSettingsUI.__init__(self, setting)
 
-    def checkedItems(self):
+        self.itemStateChanged.connect(self.settingChanged.emit)
+
+    def setValue(self, value):
+        if not isinstance(value, list):
+            value = [value]
         for row in range(self.model().rowCount()):
-            item = self.model().item(row, self.modelColumn())
-            if item.checkState() == QtCore.Qt.Checked:
-                yield item
+            self.setItemChecked(row, self.itemText(row) in value)
 
-    def handleItemPressed(self, index):
-        item = self.model().itemFromIndex(index)
-        state = QtCore.Qt.Unchecked if item.checkState() == QtCore.Qt.Checked else QtCore.Qt.Checked
-        item.setCheckState(state)
-        self._changed = True
-
-    def hidePopup(self):
-        if not self._changed:
-            super(CheckableComboBox, self).hidePopup()
-        self._changed = False
-
-    def itemChecked(self, index):
-        item = self.model().item(index, self.modelColumn())
-        return item.checkState() == QtCore.Qt.Checked
-
-    def setItemChecked(self, index, checked=True):
-        item = self.model().item(index, self.modelColumn())
-        state = QtCore.Qt.Checked if checked else QtCore.Qt.Unchecked
-        item.setCheckState(state)
-
-
-class Window(QtWidgets.QWidget):
-    def __init__(self):
-        super(Window, self).__init__()
-        self.combo = CheckableComboBox(self)
-        print(self.combo.model())
-        for index in range(6):
-            self.combo.addItem('Item %d' % index)
-            self.combo.setItemChecked(index, False)
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.combo)
+    def onSettingChanged(self, value):
+        items = [i.data(QtCore.Qt.DisplayRole) for i in self.checkedItems()]
+        self._setting.set(items)
 
 
 if __name__ == '__main__':
+    from settings_manager import Settings
+
+    s = Settings()
+    s.add('choice_list', ['a'])
+
     import sys
     app = QtWidgets.QApplication(sys.argv)
 
-    widget = Window()
+    widget = ListChoiceSetting(s.setting('choice_list'))
     widget.show()
 
     app.exec_()
+    print(s.as_dict(values_only=True))
 
-    for item in widget.combo.checkedItems():
-        print(item.data(QtCore.Qt.DisplayRole))
-
-    sys.exit()
