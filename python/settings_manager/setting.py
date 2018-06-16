@@ -40,23 +40,33 @@ class Setting(object):
 
         data_type = data_type or type(default)
 
-        if choices and not all(isinstance(c, data_type) for c in choices):
-            raise SettingsError(
-                "Invalid choices for setting {!r}. "
-                "Not all choices match the data type: {}".format(name, data_type))
+        # TODO: Clean up multi choice results
+        # TODO: Consider allowing MultiChoice int/float for large number of choices,
+        # ie, they can only cycle through numbers
+        is_multi_choice = data_type is list and minmax and choices
+        if is_multi_choice:
+            if default is not None:
+                value = default if isinstance(default, list) else [default]
+                if not set(value).issubset(set(choices)):
+                    raise SettingsError('BLAH')
+        else:
+            if choices and not all(isinstance(c, data_type) for c in choices):
+                raise SettingsError(
+                    "Invalid choices for setting {!r}. "
+                    "Not all choices match the data type: {}".format(name, data_type))
 
-        if choices and default not in choices:
-            raise SettingsError(
-                "Default value is not one of the given choices for setting {!r}".format(name))
+            if choices and default not in choices:
+                raise SettingsError(
+                    "Default value is not one of the given choices for setting {!r}".format(name))
 
         if parent and not isinstance(parent, Setting):
             raise SettingsError("Parent must be a Setting object")
 
-        # TODO: Enable minmax as number of choices for list
         if minmax is not None:
+            size = default if data_type in (float, int) else (0 if default is None else len(default))
             try:
                 lo, hi = minmax
-                if not lo <= default <= hi:
+                if not lo <= size <= hi:
                     raise SettingsError(
                         "Setting {!r} value is not in minmax range: {}".format(name, minmax))
             except (ValueError, TypeError):
@@ -109,6 +119,8 @@ class Setting(object):
         choices = self._properties['choices']
         tooltip = self._properties['tooltip']
 
+        # TODO: minmax / nargs for multi choice
+
         args = {'help': tooltip}
         if data_type == bool:
             args['action'] = 'store_false' if default else 'store_true'
@@ -160,22 +172,34 @@ class Setting(object):
             raise SettingsError(
                 "Invalid value type {!r} for setting {!r}".format(value, self._name))
 
-        # Ensure value is a valid option
-        choices = self._properties['choices']
-        if choices and value not in choices and not (value is None and nullable):
-            raise SettingsError(
-                "Value {!r} is not a valid choice for setting {!r}".format(value, self._name))
-
         # Only return value if it has no parent, or parent evaluates to True
         parent = self._properties['parent']
         if parent and not parent.get():
             raise SettingsError(
                 "Setting {!r} cannot be set, parent {!r} is not valid".format(self._name, parent))
 
+        # Ensure value is a valid option
+        # TODO: Clean up multi choice results
+        # Should have a 'validate value' method
+        choices = self._properties['choices']
         minmax = self._properties['minmax']
-        if data_type in (float, int) and minmax is not None:
+        if data_type is list and choices and minmax:
+            # multi choice list
+            if isinstance(value, list):
+                print('choices: {}, value: {}'.format(choices, value))
+                if not set(value).issubset(set(choices)):
+                    raise SettingsError('BLAH')
+            else:
+                if value not in choices:
+                    raise SettingsError('BLAH')
+        elif choices and value not in choices and not (value is None and nullable):
+            raise SettingsError(
+                "Value {!r} is not a valid choice for setting {!r}".format(value, self._name))
+
+        if minmax is not None:
+            size = value if data_type in (float, int) else (0 if value is None else len(value))
             lo, hi = minmax
-            if not lo <= value <= hi:
+            if not lo <= size <= hi:
                 raise SettingsError(
                     "Value does not fit in range {} for setting: {!r}".format(minmax, self._name))
 
