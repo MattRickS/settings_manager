@@ -71,6 +71,11 @@ class Setting(object):
             if default not in choices:
                 raise SettingsError(
                     "{} is not a valid choice for setting {!r}".format(default, name))
+
+        # TODO: Use minmax (without choices) as a size restriction on list
+        # TODO: look at allowing minmax to control another setting's list length...
+        # maybe by passing a Setting instance's method as the keyword it links it?
+        # eg, minmax=setting.get
         elif minmax is not None:
             size = default if data_type in (float, int) else (0 if default is None else len(default))
             try:
@@ -108,6 +113,9 @@ class Setting(object):
             if not isinstance(parent, Setting):
                 raise SettingsError("Parent must be a Setting object")
             parent.add_subsetting(self)
+
+    def __str__(self):
+        return self._name
 
     @property
     def name(self):

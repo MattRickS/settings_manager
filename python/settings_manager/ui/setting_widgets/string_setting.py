@@ -1,14 +1,14 @@
 from PySide2 import QtCore, QtGui, QtWidgets
-from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
+from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 
 
-class StringSetting(QtWidgets.QLineEdit, BaseSettingsUI):
+class StringSetting(QtWidgets.QLineEdit, SettingUI):
     def __init__(self, setting):
         """
         :param Setting setting:
         """
         super(StringSetting, self).__init__()
-        BaseSettingsUI.__init__(self, setting)
+        SettingUI.__init__(self, setting)
 
         self.textChanged.connect(self.onValueChanged)
 

@@ -1,14 +1,14 @@
 from PySide2 import QtCore, QtGui, QtWidgets
-from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
+from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 
 
-class FloatSetting(QtWidgets.QDoubleSpinBox, BaseSettingsUI):
+class FloatSetting(QtWidgets.QDoubleSpinBox, SettingUI):
     def __init__(self, setting, parent=None):
         """
         :param Setting setting:
         """
         super(FloatSetting, self).__init__(parent)
-        BaseSettingsUI.__init__(self, setting)
+        SettingUI.__init__(self, setting)
 
         minmax = setting.property('minmax')
         if minmax:

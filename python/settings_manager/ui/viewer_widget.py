@@ -2,6 +2,10 @@ from Qt import QtWidgets, QtCore, QtGui
 from functools import partial
 
 
+# TODO: Look at moving all widgets to a Model View system
+# EditorWidgets (persistent optional) are the SettingWidgets
+
+
 class SettingsViewer(QtWidgets.QDialog):
     """
     Default widget for the settings object.
@@ -100,6 +104,11 @@ class SettingsViewer(QtWidgets.QDialog):
                 # Initial state
                 if setting.property('value') is None:
                     null_checkbox.setCheckState(QtCore.Qt.Checked)
+                    label.setEnabled(False)
+                    widget.setEnabled(False)
+                elif setting.get() is None:
+                    label.setEnabled(False)
+                    null_checkbox.setEnabled(False)
                     widget.setEnabled(False)
 
                 null_checkbox.stateChanged.connect(partial(self._on_none_checkbox_checked, setting))
@@ -135,12 +144,19 @@ class SettingsViewer(QtWidgets.QDialog):
 
         :param Setting  setting:
         """
-        value = bool(setting.get())
+        value = bool(setting.property('value'))
         for subsetting in setting.subsettings:
-            label, widget, checkbox = self._rows[subsetting]
-            if widget:
-                label.setEnabled(value)
-                widget.setEnabled(value)
-                if checkbox:
-                    checkbox.setEnabled(value)
+            # Setting might not be in the viewer (hidden, skipped, etc...)
+            widgets = self._rows.get(subsetting)
+            if widgets is None:
+                continue
+
+            # If parent has no valid value, disable all
+            # If self is None, disable all but the None box
+            label, widget, checkbox = widgets
+            curr_value = value & subsetting.property('value') is not None
+            label.setEnabled(curr_value)
+            widget.setEnabled(curr_value)
+            if checkbox:
+                checkbox.setEnabled(value)
             self.onSettingChanged(subsetting)

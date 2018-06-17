@@ -1,7 +1,7 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 
 
-class BaseSettingsUI(object):
+class SettingUI(object):
     """
     Provides a common interface for settings widgets.
     Must be initialised after the parent widget for the signal to work.

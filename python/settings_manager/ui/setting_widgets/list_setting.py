@@ -1,5 +1,5 @@
 from PySide2 import QtCore, QtGui, QtWidgets
-from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
+from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 
 
 class EnterItemDialog(QtWidgets.QDialog):
@@ -31,14 +31,14 @@ class EnterItemDialog(QtWidgets.QDialog):
         self.ok_btn.clicked.connect(self.accept)
 
 
-class ListSetting(QtWidgets.QWidget, BaseSettingsUI):
+class ListSetting(QtWidgets.QWidget, SettingUI):
     def __init__(self, setting):
         """
         :param Setting setting:
         """
         super(ListSetting, self).__init__()
         self.list_widget = QtWidgets.QListWidget()
-        BaseSettingsUI.__init__(self, setting)
+        SettingUI.__init__(self, setting)
 
         # ----- Widgets -----
 

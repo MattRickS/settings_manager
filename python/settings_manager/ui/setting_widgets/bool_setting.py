@@ -1,14 +1,14 @@
 from PySide2 import QtCore, QtGui, QtWidgets
-from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
+from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 
 
-class BoolSetting(QtWidgets.QCheckBox, BaseSettingsUI):
+class BoolSetting(QtWidgets.QCheckBox, SettingUI):
     def __init__(self, setting, parent=None):
         """
         :param Setting setting:
         """
         super(BoolSetting, self).__init__(parent)
-        BaseSettingsUI.__init__(self, setting)
+        SettingUI.__init__(self, setting)
 
         # Connection
         self.stateChanged.connect(self.onValueChanged)

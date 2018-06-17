@@ -1,4 +1,4 @@
-from .base_settings_ui import BaseSettingsUI
+from .setting_ui import SettingUI
 from .bool_setting import BoolSetting
 from .choice_setting import ChoiceSetting
 from .float_setting import FloatSetting

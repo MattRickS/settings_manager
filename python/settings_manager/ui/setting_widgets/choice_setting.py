@@ -1,8 +1,8 @@
 from PySide2 import QtCore, QtGui, QtWidgets
-from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
+from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 
 
-class ChoiceSetting(QtWidgets.QComboBox, BaseSettingsUI):
+class ChoiceSetting(QtWidgets.QComboBox, SettingUI):
     def __init__(self, setting, parent=None):
         """
         :param Setting setting:
@@ -13,7 +13,7 @@ class ChoiceSetting(QtWidgets.QComboBox, BaseSettingsUI):
         choices = setting.property('choices')
         self.addItems(list(map(str, choices)))
 
-        BaseSettingsUI.__init__(self, setting)
+        SettingUI.__init__(self, setting)
 
         self.currentTextChanged.connect(self.onValueChanged)
 

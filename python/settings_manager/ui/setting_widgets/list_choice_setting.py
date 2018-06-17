@@ -1,12 +1,12 @@
 from PySide2 import QtCore, QtGui, QtWidgets
-from settings_manager.ui.setting_widgets.base_settings_ui import BaseSettingsUI
+from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 from settings_manager.ui.checkable_combo_box import CheckableComboBox
 
 
-class ListChoiceSetting(CheckableComboBox, BaseSettingsUI):
+class ListChoiceSetting(CheckableComboBox, SettingUI):
     def __init__(self, setting, parent=None):
         super(ListChoiceSetting, self).__init__(parent)
-        BaseSettingsUI.__init__(self, setting)
+        SettingUI.__init__(self, setting)
 
         # Load choices
         choices = setting.property('choices')
