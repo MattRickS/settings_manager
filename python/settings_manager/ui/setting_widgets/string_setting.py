@@ -22,20 +22,3 @@ class StringSetting(QtWidgets.QLineEdit, SettingUI):
     def onValueChanged(self, value):
         # Convert to data type to keep encoding
         super(StringSetting, self).onValueChanged(self._setting.type(value))
-
-
-if __name__ == '__main__':
-    from settings_manager import Settings
-
-    s = Settings()
-    s.add('string', 'value')
-
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-
-    widget = StringSetting(s.setting('string'))
-    widget.show()
-
-    app.exec_()
-    print(s.as_dict(values_only=True))
-

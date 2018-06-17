@@ -7,8 +7,9 @@ class SettingUI(object):
     Must be initialised after the parent widget for the signal to work.
 
     To subclass:
-        Connect the widget's normal 'value changed' signal to self.onValueChanged
-        Implement setValue() to either call onValueChanged or emit the 'value changed' signal
+        Connect the widget's normal 'valueChanged' signal to self.onValueChanged
+        Implement setValue() to either call onValueChanged or emit the
+        'valueChanged' signal
         Implement value to return the widget value
 
     """

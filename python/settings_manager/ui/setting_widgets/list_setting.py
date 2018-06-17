@@ -41,9 +41,9 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
 
         # ----- Widgets -----
 
-        self.add_btn = QtWidgets.QPushButton("+")
+        self.add_btn = QtWidgets.QPushButton('+')
         self.add_btn.setFixedWidth(self.add_btn.sizeHint().height())
-        self.sub_btn = QtWidgets.QPushButton("-")
+        self.sub_btn = QtWidgets.QPushButton('-')
         self.sub_btn.setFixedWidth(self.sub_btn.sizeHint().height())
         # TODO: add up/down arrows
         # TODO: add edit button (eg, fixed size list)
@@ -111,20 +111,3 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
             index = self.list_widget.indexFromItem(item)
             self.list_widget.takeItem(index.row())
             self.list_widget.itemChanged.emit(item)
-
-
-if __name__ == '__main__':
-    from settings_manager import Settings
-
-    s = Settings()
-    s.add('list', ['A', 'B', 'D'])
-
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-
-    widget = ListSetting(s.setting('list'))
-    widget.show()
-
-    app.exec_()
-    print(s.as_dict(values_only=True))
-

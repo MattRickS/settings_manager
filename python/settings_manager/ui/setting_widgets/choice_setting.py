@@ -23,19 +23,3 @@ class ChoiceSetting(QtWidgets.QComboBox, SettingUI):
 
     def value(self):
         return self.currentText()
-
-
-if __name__ == '__main__':
-    from settings_manager import Settings
-
-    s = Settings()
-    s.add('choice', 'A', choices=['A', 'B', 'C'])
-
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-
-    widget = ChoiceSetting(s.setting('choice'))
-    widget.show()
-
-    app.exec_()
-    print(s.as_dict(values_only=True))

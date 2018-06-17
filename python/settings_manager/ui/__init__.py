@@ -28,7 +28,7 @@ def get_default_widget(setting):
     elif data_type == list:
         return ListSetting(setting)
     else:
-        raise TypeError("Unsupported setting UI type: {}".format(data_type))
+        raise TypeError('Unsupported setting UI type: {}'.format(data_type))
 
 
 def show_settings(settings, *args, **kwargs):
@@ -40,9 +40,9 @@ def show_settings(settings, *args, **kwargs):
     :param Settings settings:
     :rtype: QWidget
     """
-    from Qt import QtWidgets
+    from Qt.QtWidgets import QApplication
 
-    app = None if QtWidgets.QApplication.instance() else QtWidgets.QApplication([])
+    app = None if QApplication.instance() else QApplication([])
 
     widget = settings.widget(*args, **kwargs)
 

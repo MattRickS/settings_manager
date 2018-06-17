@@ -17,19 +17,3 @@ class FloatSetting(QtWidgets.QDoubleSpinBox, SettingUI):
             self.setMaximum(float(hi))
 
         self.valueChanged.connect(self.onValueChanged)
-
-
-if __name__ == '__main__':
-    from settings_manager import Settings
-
-    s = Settings()
-    s.add('float', 10.0)
-
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-
-    widget = FloatSetting(s.setting('float'))
-    widget.show()
-
-    app.exec_()
-    print(s.as_dict(values_only=True))

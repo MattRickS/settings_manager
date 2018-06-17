@@ -12,29 +12,22 @@ class SettingsViewer(QtWidgets.QDialog):
 
     Uses a GridLayout, with the following columns:
         0: Label using the setting name plus any prefix supplied to the widget.
-        1: Widget. This is requested from the setting, so can be the default or user supplied.
-        2: [Optional] Null checkbox. If the value is nullable, a checkbox is added labelled "None".
-            Checking this will disable the widget, and any child widgets.
+        1: Widget. This is requested from the setting, so can be the default or
+           user defined.
+        2: [Optional] Null checkbox. If the value is nullable, a checkbox is
+           added labelled 'None'. Checking this will disable the widget, and any
+           child widgets.
 
-    Settings are added in sorted order unless the "parent" property is set, in which case it is
-    added directly after the parent. SettingsViewer will respect the "parent" property of settings,
-    and recursively enable / disable dependent setting widgets whenever a value is changed.
-
-    WARNING:
-        Settings.settingChanged is connected to the UI updates. Attempting to connect a UI signal
-        to the settingChanged signal will cause infinite recursion. If you need to do this, only
-        update the setting if the value has changed, eg:
-
-            >>> def _on_ui_setting_changed(self, setting, value):
-            >>>     if value != self.settings.get(setting):
-            >>>         self.settings.set(setting, value)
+    Settings are added in sorted order. SettingsViewer will respect the 'parent'
+    property of settings, and recursively enable / disable dependent setting
+    widgets whenever a value is changed.
     """
 
-    def __init__(self, settings, parent=None, prefix="", skip=None):
+    def __init__(self, settings, parent=None, prefix='', skip=None):
         """
         :param Settings             settings:   Settings object to build for
         :param QtWidgets.QWidget    parent:     Parent widget
-        :param str                  prefix:     Name to prefix all setting with (Default blank)
+        :param str                  prefix:     Name to prefix all setting with
         :param list[str]            skip:       List of setting names to ignore
         """
         super(SettingsViewer, self).__init__(parent)
@@ -46,7 +39,17 @@ class SettingsViewer(QtWidgets.QDialog):
 
     @property
     def settings(self):
+        """
+        :rtype: Settings
+        """
         return self._settings
+
+    def get_row(self, setting):
+        """
+        :param Setting setting:
+        :rtype: tuple(QtWidgets.QLabel, QtWidgets.QWidget, QtWidgets.QCheckbox)
+        """
+        return self._rows[setting]
 
     def get_widget(self, setting):
         """
@@ -57,10 +60,6 @@ class SettingsViewer(QtWidgets.QDialog):
         """
         return self._rows[setting][1]
 
-    # -----------------------------------------------------------------
-    #                            PROTECTED
-    # -----------------------------------------------------------------
-
     def _build_default_layout(self, skip=None):
         """
         Builds a default grid layout for the UI.
@@ -70,7 +69,7 @@ class SettingsViewer(QtWidgets.QDialog):
         skip = skip or list()
         layout = QtWidgets.QGridLayout()
 
-        # Count ourselves instead of enumerate to avoid invalid rows when skipping
+        # Count instead of enumerate to avoid invalid rows when skipping
         row = 0
         for name in self._settings:
             setting = self._settings.setting(name)
@@ -88,7 +87,8 @@ class SettingsViewer(QtWidgets.QDialog):
             widget = setting.widget()
             if setting.parent and not setting.parent.get():
                 widget.setEnabled(False)
-            widget.settingChanged.connect(partial(self.onSettingChanged, setting))
+            widget.settingChanged.connect(
+                partial(self.onSettingChanged, setting))
 
             # Add to Layout
             layout.addWidget(label, row, 0, alignment=QtCore.Qt.AlignTop)
@@ -109,7 +109,8 @@ class SettingsViewer(QtWidgets.QDialog):
                     label.setEnabled(False)
                     widget.setEnabled(False)
 
-                null_checkbox.stateChanged.connect(partial(self._on_none_checkbox_checked, setting))
+                null_checkbox.stateChanged.connect(
+                    partial(self._on_none_checkbox_checked, setting))
                 layout.addWidget(null_checkbox, row, 2)
 
             self._rows[setting] = (label, widget, null_checkbox)
@@ -120,11 +121,15 @@ class SettingsViewer(QtWidgets.QDialog):
 
         return layout
 
-    # -----------------------------------------------------------------
-    #                              SLOTS
-    # -----------------------------------------------------------------
+    # ======================================================================== #
+    #                                  SLOTS                                   #
+    # ======================================================================== #
 
     def _on_none_checkbox_checked(self, setting, state):
+        """
+        :param Setting              setting:
+        :param QtCore.Qt.ChedkState state:
+        """
         label, widget, checkbox = self._rows[setting]
         is_not_none = state != QtCore.Qt.Checked
         # The previous value is still in the disabled widget, set it back

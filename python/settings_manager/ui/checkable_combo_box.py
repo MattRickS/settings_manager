@@ -60,7 +60,8 @@ class CheckableComboBox(QtWidgets.QComboBox):
     def _set_selection_string(self):
         selected = [i.data(QtCore.Qt.DisplayRole) for i in self.checkedItems()]
         if selected:
-            self._selected_string = '({}) {}'.format(len(selected), ', '.join(selected))
+            self._selected_string = '({}) {}'.format(
+                len(selected), ', '.join(selected))
         else:
             self._selected_string = self._default_string
 
@@ -73,32 +74,6 @@ class CheckableComboBox(QtWidgets.QComboBox):
         :param QtCore.QModelIndex   index:
         """
         item = self.model().itemFromIndex(index)
-        self.setItemChecked(index.row(), checked=item.checkState() == QtCore.Qt.Unchecked)
+        checked = item.checkState() == QtCore.Qt.Unchecked
+        self.setItemChecked(index.row(), checked=checked)
         self._changed = True
-
-
-if __name__ == '__main__':
-    class Window(QtWidgets.QWidget):
-        def __init__(self):
-            super(Window, self).__init__()
-            self.combo = CheckableComboBox(self)
-            print(self.combo.model())
-            for index in range(6):
-                self.combo.addItem('Item %d' % index)
-                self.combo.setItemChecked(index, False)
-            layout = QtWidgets.QVBoxLayout(self)
-            layout.addWidget(self.combo)
-
-    import sys
-
-    app = QtWidgets.QApplication(sys.argv)
-
-    widget = Window()
-    widget.show()
-
-    app.exec_()
-
-    for item in widget.combo.checkedItems():
-        print(item.data(QtCore.Qt.DisplayRole))
-
-    sys.exit()

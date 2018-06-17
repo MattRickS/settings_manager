@@ -35,11 +35,11 @@ class Settings(object):
     eg,
 
     >>> settings = Settings()
-    >>> settings.add("some_value", 3, label="Some Value")
-    >>> settings.add("options", "None", choices=["None", "yes", "no", "maybe"])
-    >>> settings.get("options")
+    >>> settings.add('some_value', 3, label='Some Value')
+    >>> settings.add('options', 'None', choices=['None', 'yes', 'no', 'maybe'])
+    >>> settings.get('options')
     'None'
-    >>> settings["some_value"]
+    >>> settings['some_value']
     3
 
     The SettingsViewer provides a default UI for displaying settings.
@@ -82,27 +82,35 @@ class Settings(object):
             hidden=False, label=None, minmax=None, nullable=False,
             parent=None, tooltip='', widget=None, **kwargs):
         """
-        :param str          name:       Name of the setting. Used to get and set the value.
-        :param object       default:    Default value. If None, data_type is required.
-
+        :param str          name:       Name of the setting.
+        :param object       default:    Value. If None, data_type is required.
+                            
         :param list         choices:    List of fixed values for the setting.
-        :param              data_type:  Type of the value. Inferred from default if not given.
-        :param bool         hidden:     Whether or not the setting should be visible.
-        :param str          label:      UI setting. Display name for the setting (defaults to name).
-        :param tuple|int    minmax:     Tuple of minimum and maximum values for floats and ints.
-                                        If provided with choices, the setting becomes a list type,
-                                        and minmax defines the number of choices that can be selected.
+        :param              data_type:  Type of the value. Inferred from default 
+                                        if not given.
+        :param bool         hidden:     Whether or not the setting should be 
+                                        visible in UI / argparser.
+        :param str          label:      UI setting. Display name for the setting 
+                                        (defaults to name).
+        :param tuple|int    minmax:     Tuple of minimum and maximum values for 
+                                        floats and ints. If provided with
+                                        choices, the setting becomes a list 
+                                        type, and minmax defines the number of 
+                                        choices that can be selected.
         :param bool         nullable:   Whether or not None is a valid value.
-        :param Setting|str  parent:     Another Setting who's value must evaluate True for this
-                                        setting to be get/set. Calling get() on a setting whose
-                                        parent does not evaluate True will return None.
-        :param bool         tooltip:    Description message for widget tooltip and parser help
-        :param              widget:     UI setting. Callable object that returns a UI widget to use
-                                        for this setting. If None, a default UI will be generated.
-        :rtype: Setting
+        :param Setting|str  parent:     Another Setting who's value must 
+                                        evaluate True for this setting to be 
+                                        get/set. Calling get() on a setting 
+                                        whose parent does not evaluate True will 
+                                        return None.
+        :param bool         tooltip:    Description message for widget tooltip 
+                                        and parser help
+        :param              widget:     UI setting. Callable object that returns 
+                                        a UI widget to use for this setting. If 
+                                        None, a default UI will be generated.
         """
         if name in self._settings:
-            raise SettingsError("Setting already exists: {!r}".format(name))
+            raise SettingsError('Setting already exists: {!r}'.format(name))
         if isinstance(parent, str):
             parent = self.setting(parent)
         setting = Setting(name, default, choices=choices, data_type=data_type,
@@ -200,7 +208,7 @@ class Settings(object):
         Returns the value for the given setting name.
         If the key is disabled of has a parent whose value is False, returns None.
 
-        :raises: KeyError if key is not a valid setting
+        :raise: KeyError if key is not a valid setting
 
         :param str key:
         """
@@ -218,7 +226,7 @@ class Settings(object):
         """
         Returns the setting properties for the given key
 
-        :raises: KeyError if key is not a valid setting
+        :raise: KeyError if key is not a valid setting
 
         :param str key: Name of setting to return properties for
         :rtype: dict
@@ -238,7 +246,7 @@ class Settings(object):
         """
         Sets a setting's value. Triggers the settingChanged signal to be emitted.
 
-        :raises: SettingsError if not a valid key, value pair.
+        :raise: SettingsError if not a valid key, value pair.
 
         :param str key:
         :param object value:
@@ -246,7 +254,7 @@ class Settings(object):
         # Ensure the setting exists
         setting = self._settings.get(key)
         if setting is None:
-            raise SettingsError("No setting exists for: {!r}".format(key))
+            raise SettingsError('No setting exists for: {!r}'.format(key))
 
         setting.set(value)
 
@@ -324,7 +332,7 @@ class Settings(object):
         :param dict scope:  The scope to use when evaluating data_type and widget.
         :rtype: Settings
         """
-        with open(path, "r") as f:
+        with open(path, 'r') as f:
             data = json.load(f, object_pairs_hook=OrderedDict)
 
         # Convert data from unicode to string (python 2 only)
@@ -334,10 +342,10 @@ class Settings(object):
         # Types are converted to strings in json, evaluate them back to types
         for setting_data in data.values():
             if isinstance(setting_data, dict):
-                setting_data["data_type"] = eval(setting_data["data_type"], scope)
+                setting_data['data_type'] = eval(setting_data['data_type'], scope)
 
-                widget = setting_data["widget"]
+                widget = setting_data['widget']
                 if widget:
-                    setting_data["widget"] = eval(widget, scope)
+                    setting_data['widget'] = eval(widget, scope)
 
         return cls(data)

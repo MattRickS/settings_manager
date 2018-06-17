@@ -45,20 +45,3 @@ class ListChoiceSetting(CheckableComboBox, SettingUI):
     def onValueChanged(self, value):
         items = [i.data(QtCore.Qt.DisplayRole) for i in self.checkedItems()]
         super(ListChoiceSetting, self).onValueChanged(items)
-
-
-if __name__ == '__main__':
-    from settings_manager import Settings
-
-    s = Settings()
-    s.add('choice_list', ['mid'], data_type=list, choices=['xlo', 'lo', 'mid', 'hi', 'xhi'], minmax=(1, 5))
-
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-
-    widget = ListChoiceSetting(s.setting('choice_list'))
-    widget.show()
-
-    app.exec_()
-    print(s.as_dict(values_only=True))
-
