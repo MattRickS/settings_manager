@@ -6,11 +6,17 @@ from settings_manager.ui.checkable_combo_box import CheckableComboBox
 class ListChoiceSetting(CheckableComboBox, BaseSettingsUI):
     def __init__(self, setting, parent=None):
         super(ListChoiceSetting, self).__init__(parent)
+        BaseSettingsUI.__init__(self, setting)
+
+        # Load choices
         choices = setting.property('choices')
         self.addItems(choices)
         for i in range(len(choices)):
             self.setItemChecked(i, False)
-        BaseSettingsUI.__init__(self, setting)
+
+        # Set a useful default message
+        minmax = setting.property('minmax')
+        self.setDefaultText('Select {}-{} items...'.format(*minmax))
 
         self.itemStateChanged.connect(self.settingChanged.emit)
 

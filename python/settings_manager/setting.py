@@ -7,7 +7,7 @@ class Setting(object):
 
     def __init__(self, name, default, choices=None, data_type=None,
                  enabled=True, hidden=False, label=None, minmax=None,
-                 nullable=False, parent=None, tooltip='', widget=None, **kwargs):
+                 nullable=False, parent=None, tooltip=None, widget=None, **kwargs):
         """
         :param str      name:      The name of the setting. Used to get and set the value.
         :param object   default:   Default value. If None, data_type is required.
@@ -30,39 +30,52 @@ class Setting(object):
         if not isinstance(name, str):
             raise SettingsError("Setting names must be strings: {}".format(name))
 
+        if parent is not None and not isinstance(parent, Setting):
+            raise SettingsError("Parent must be a Setting object")
+
+        # Hard rule, as they both are restrictions on valid values
+        is_multi_choice = minmax is not None and choices is not None
+        if is_multi_choice:
+            data_type = list
+            # Explicit use case type validation, to avoid confusion
+            if default is not None and not isinstance(default, list):
+                raise SettingsError(
+                    'Setting {!r} must be a list when combining minmax and choices'.format(name))
+
+        # Determine data_type
+        if isinstance(data_type, str):
+            # If data_type was given as a string, eg, via a configuration, get the object
+            try:
+                data_type = __builtins__.get(data_type)
+            except KeyError:
+                raise SettingsError('Unknown data_type for setting: {!r}'.format(name))
         if data_type is None and default is None:
             raise SettingsError("Unknown data type for setting {!r}. "
                                 "Must specify a data type or valid default value".format(name))
-
         if data_type and default is not None and not isinstance(default, data_type):
             raise SettingsError(
                 "Default value does not match data type for setting {!r}".format(name))
-
         data_type = data_type or type(default)
 
-        # TODO: Clean up multi choice results
-        # TODO: Consider allowing MultiChoice int/float for large number of choices,
-        # ie, they can only cycle through numbers
-        is_multi_choice = data_type is list and minmax and choices
+        # Special properties
         if is_multi_choice:
             if default is not None:
-                value = default if isinstance(default, list) else [default]
-                if not set(value).issubset(set(choices)):
-                    raise SettingsError('BLAH')
-        else:
-            if choices and not all(isinstance(c, data_type) for c in choices):
+                lo, hi = minmax
+                if lo > len(default) > hi:
+                    raise SettingsError("Invalid number of choices for setting: {!r}".format(name))
+                if not set(default).issubset(set(choices)):
+                    raise SettingsError('Invalid choices for setting: {!r}'.format(name))
+            # TODO: Add sub_type key for converting values to from strings, remove this error
+            if not all(isinstance(x, str) for x in choices):
+                raise SettingsError('Multi choice lists must be strings')
+        elif choices is not None:
+            if not all(isinstance(c, data_type) for c in choices):
                 raise SettingsError(
-                    "Invalid choices for setting {!r}. "
-                    "Not all choices match the data type: {}".format(name, data_type))
-
-            if choices and default not in choices:
+                    "{!r}'s choices do not match the data type: {}".format(name, data_type))
+            if default not in choices:
                 raise SettingsError(
-                    "Default value is not one of the given choices for setting {!r}".format(name))
-
-        if parent and not isinstance(parent, Setting):
-            raise SettingsError("Parent must be a Setting object")
-
-        if minmax is not None:
+                    "{} is not a valid choice for setting {!r}".format(default, name))
+        elif minmax is not None:
             size = default if data_type in (float, int) else (0 if default is None else len(default))
             try:
                 lo, hi = minmax
@@ -75,7 +88,7 @@ class Setting(object):
 
         # Store properties as dict so that additional properties can be added
         self._properties = {
-            "choices": choices or list(),
+            "choices": choices,
             "data_type": data_type,
             "default": default,
             "enabled": enabled,
@@ -84,7 +97,7 @@ class Setting(object):
             "minmax": minmax,
             "nullable": nullable or (default is None),
             "parent": parent,
-            "tooltip": tooltip,
+            "tooltip": tooltip or '',
             "value": default,
         }
         self._properties.update(kwargs)
@@ -157,54 +170,57 @@ class Setting(object):
         """
         return self._properties.get(name)
 
+    def _set(self, value):
+        self._properties['value'] = value
+        self.settingChanged.emit(self._name, value)
+
     def set(self, value):
         """
         Sets a setting's value. Triggers the settingChanged signal to be emitted.
 
         :raises: SettingsError if not a valid value.
 
-        :param object value:
+        :param value:
         """
-        # Ensure type is valid
-        data_type = self._properties['data_type']
-        nullable = self._properties['nullable']
-        if not isinstance(value, data_type) and not (value is None and nullable):
-            raise SettingsError(
-                "Invalid value type {!r} for setting {!r}".format(value, self._name))
-
-        # Only return value if it has no parent, or parent evaluates to True
+        # Only set value if it has no parent, or parent evaluates to True
         parent = self._properties['parent']
         if parent and not parent.get():
             raise SettingsError(
                 "Setting {!r} cannot be set, parent {!r} is not valid".format(self._name, parent))
 
-        # Ensure value is a valid option
-        # TODO: Clean up multi choice results
-        # Should have a 'validate value' method
+        # Nullable can set without further validation
+        nullable = self._properties['nullable']
+        if value is None and nullable:
+            self._set(value)
+            return
+
+        # Ensure type is valid
+        data_type = self._properties['data_type']
+        if not isinstance(value, data_type):
+            raise SettingsError(
+                "Invalid value type {!r} for setting {!r}".format(value, self._name))
+
+        # Special properties
         choices = self._properties['choices']
         minmax = self._properties['minmax']
-        if data_type is list and choices and minmax:
-            # multi choice list
-            if isinstance(value, list):
-                print('choices: {}, value: {}'.format(choices, value))
-                if not set(value).issubset(set(choices)):
-                    raise SettingsError('BLAH')
-            else:
-                if value not in choices:
-                    raise SettingsError('BLAH')
-        elif choices and value not in choices and not (value is None and nullable):
-            raise SettingsError(
-                "Value {!r} is not a valid choice for setting {!r}".format(value, self._name))
-
-        if minmax is not None:
-            size = value if data_type in (float, int) else (0 if value is None else len(value))
+        if choices is not None and minmax is not None:
             lo, hi = minmax
-            if not lo <= size <= hi:
+            if not lo <= len(value) <= hi:
+                raise SettingsError(
+                    "Invalid number of choices for setting: {!r}".format(self._name))
+            if not set(value).issubset(set(choices)):
+                raise SettingsError('Invalid choices for setting: {!r}'.format(self._name))
+        elif choices is not None:
+            if value not in choices:
+                raise SettingsError(
+                    "Invalid choice {!r} for setting: {!r}".format(value, self._name))
+        elif minmax is not None:
+            lo, hi = minmax
+            if not lo <= value <= hi:
                 raise SettingsError(
                     "Value does not fit in range {} for setting: {!r}".format(minmax, self._name))
 
-        self._properties['value'] = value
-        self.settingChanged.emit(self._name, value)
+        self._set(value)
 
     def widget(self, *args, **kwargs):
         """

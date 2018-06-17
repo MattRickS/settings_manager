@@ -59,7 +59,10 @@ class CheckableComboBox(QtWidgets.QComboBox):
 
     def _set_selection_string(self):
         selected = [i.data(QtCore.Qt.DisplayRole) for i in self.checkedItems()]
-        self._selected_string = ', '.join(selected) if selected else self._default_string
+        if selected:
+            self._selected_string = '({}) {}'.format(len(selected), ', '.join(selected))
+        else:
+            self._selected_string = self._default_string
 
     # ======================================================================== #
     #                               CONNECTIONS                                #

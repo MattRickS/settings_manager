@@ -11,7 +11,11 @@ def get_default_widget(setting):
     :rtype: QtWidgets.QWidget
     """
     data_type = setting.property('data_type')
-    if setting.property('choices'):
+    choices = setting.property('choices')
+    minmax = setting.property('minmax')
+    if choices and minmax:
+        return ListChoiceSetting(setting)
+    elif choices:
         return ChoiceSetting(setting)
     elif data_type == str:
         return StringSetting(setting)
