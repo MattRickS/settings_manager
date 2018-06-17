@@ -6,23 +6,23 @@ class Setting(object):
                  hidden=False, label=None, minmax=None, nullable=False,
                  parent=None, tooltip=None, widget=None, **kwargs):
         """
-        :param str      name:       Name of the setting. Used to get and set the value.
-        :param object   default:    Default value. If None, data_type is required.
+        :param str        name:       Name of the setting. Used to get and set the value.
+        :param object     default:    Default value. If None, data_type is required.
 
-        :param list     choices:    List of fixed values for the setting.
-        :param          data_type:  Type of the value. Inferred from default if not given.
-        :param bool     hidden:     Whether or not the setting should be visible.
-        :param str      label:      UI setting. Display name for the setting (defaults to name).
-        :param tuple    minmax:     Tuple of minimum and maximum values for floats and ints.
-                                    If provided with choices, the setting becomes a list type,
-                                    and minmax defines the number of choices that can be selected.
-        :param bool     nullable:   Whether or not None is a valid value.
-        :param Setting  parent:     Another setting who's value must evaluate True for this
-                                    setting to be get/set. Calling get() on a setting whose parent
-                                    does not evaluate True will return None.
-        :param bool     tooltip:    Description message for widget tooltip and parser help
-        :param          widget:     UI setting. Callable object that returns a UI widget to use
-                                    for this setting. If None, a default UI will be generated.
+        :param list       choices:    List of fixed values for the setting.
+        :param            data_type:  Type of the value. Inferred from default if not given.
+        :param bool       hidden:     Whether or not the setting should be visible.
+        :param str        label:      UI setting. Display name for the setting (defaults to name).
+        :param tuple|int  minmax:     Tuple of minimum and maximum values for floats and ints.
+                                      If provided with choices, the setting becomes a list type,
+                                      and minmax defines the number of choices that can be selected.
+        :param bool       nullable:   Whether or not None is a valid value.
+        :param Setting    parent:     Another setting who's value must evaluate True for this
+                                      setting to be get/set. Calling get() on a setting whose parent
+                                      does not evaluate True will return None.
+        :param bool       tooltip:    Description message for widget tooltip and parser help
+        :param            widget:     UI setting. Callable object that returns a UI widget to use
+                                      for this setting. If None, a default UI will be generated.
         """
         if not isinstance(name, str):
             raise SettingsError("Setting names must be strings: {}".format(name))
@@ -70,12 +70,12 @@ class Setting(object):
                 raise SettingsError(
                     "{} is not a valid choice for setting {!r}".format(default, name))
 
-        # TODO: Use minmax (without choices) as a size restriction on list
         # TODO: look at allowing minmax to control another setting's list length...
         # maybe by passing a Setting instance's method as the keyword it links it?
         # eg, minmax=setting.get
-        elif minmax is not None:
-            size = default if data_type in (float, int) else (0 if default is None else len(default))
+        elif minmax is not None and default is not None:
+            minmax = minmax if hasattr(minmax, '__iter__') else (minmax, minmax)
+            size = default if data_type in (float, int) else len(default)
             try:
                 lo, hi = minmax
                 if not lo <= size <= hi:
@@ -232,8 +232,9 @@ class Setting(object):
                 raise SettingsError(
                     "Invalid choice {!r} for setting: {!r}".format(value, self._name))
         elif minmax is not None:
+            size = value if isinstance(value, (float, int)) else len(value)
             lo, hi = minmax
-            if not lo <= value <= hi:
+            if not lo <= size <= hi:
                 raise SettingsError(
                     "Value does not fit in range {} for setting: {!r}".format(minmax, self._name))
 

@@ -89,7 +89,7 @@ class Settings(object):
         :param              data_type:  Type of the value. Inferred from default if not given.
         :param bool         hidden:     Whether or not the setting should be visible.
         :param str          label:      UI setting. Display name for the setting (defaults to name).
-        :param tuple        minmax:     Tuple of minimum and maximum values for floats and ints.
+        :param tuple|int    minmax:     Tuple of minimum and maximum values for floats and ints.
                                         If provided with choices, the setting becomes a list type,
                                         and minmax defines the number of choices that can be selected.
         :param bool         nullable:   Whether or not None is a valid value.

@@ -38,7 +38,6 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
         """
         super(ListSetting, self).__init__()
         self.list_widget = QtWidgets.QListWidget()
-        SettingUI.__init__(self, setting)
 
         # ----- Widgets -----
 
@@ -47,6 +46,7 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
         self.sub_btn = QtWidgets.QPushButton("-")
         self.sub_btn.setFixedWidth(self.sub_btn.sizeHint().height())
         # TODO: add up/down arrows
+        # TODO: add edit button (eg, fixed size list)
 
         # ----- Layout -----
 
@@ -68,9 +68,15 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
         self.sub_btn.clicked.connect(self._on_sub_btn_clicked)
         self.list_widget.itemChanged.connect(self.onValueChanged)
 
+        # ----- Initialise -----
+
+        SettingUI.__init__(self, setting)
+        self._enable_buttons()
+
     def setValue(self, value):
         self.list_widget.clear()
-        self.list_widget.addItems(value)
+        self.list_widget.addItems([str(x) for x in value])
+        self.onValueChanged(None)
 
     def value(self):
         # All items to text
@@ -81,7 +87,17 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
         return lst
 
     def onValueChanged(self, value):
-        super(ListSetting, self).onValueChanged(self.value())
+        value = self.value()
+        super(ListSetting, self).onValueChanged(value)
+        self._enable_buttons()
+
+    def _enable_buttons(self):
+        value = self._setting.property('value')
+        minmax = self._setting.property('minmax')
+        if minmax:
+            lo, hi = minmax
+            self.add_btn.setEnabled(hi > len(value))
+            self.sub_btn.setEnabled(lo < len(value))
 
     def _on_add_btn_clicked(self):
         enter_item = EnterItemDialog()
