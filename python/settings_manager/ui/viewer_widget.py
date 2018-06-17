@@ -75,11 +75,9 @@ class SettingsViewer(QtWidgets.QDialog):
         for name in self._settings:
             setting = self._settings.setting(name)
 
-            hidden = setting.property('hidden')
-            data_type = setting.property('data_type')
-
             # Get the widget if required
-            if hidden or data_type == object or name in skip:
+            hidden = setting.property('hidden')
+            if hidden or name in skip:
                 continue
 
             # Setup a separate label for the widget
@@ -107,8 +105,8 @@ class SettingsViewer(QtWidgets.QDialog):
                     label.setEnabled(False)
                     widget.setEnabled(False)
                 elif setting.get() is None:
-                    label.setEnabled(False)
                     null_checkbox.setEnabled(False)
+                    label.setEnabled(False)
                     widget.setEnabled(False)
 
                 null_checkbox.stateChanged.connect(partial(self._on_none_checkbox_checked, setting))
@@ -128,14 +126,12 @@ class SettingsViewer(QtWidgets.QDialog):
 
     def _on_none_checkbox_checked(self, setting, state):
         label, widget, checkbox = self._rows[setting]
-        if state == QtCore.Qt.Checked:
-            setting.set(None)
-        else:
-            # The previous value is still in the disabled widget, set it back
-            setting.set(widget.value())
-        value = state != QtCore.Qt.Checked
-        label.setEnabled(value)
-        widget.setEnabled(value)
+        is_not_none = state != QtCore.Qt.Checked
+        # The previous value is still in the disabled widget, set it back
+        value = widget.value() if is_not_none else None
+        setting.set(value)
+        label.setEnabled(is_not_none)
+        widget.setEnabled(is_not_none)
         self.onSettingChanged(setting)
 
     def onSettingChanged(self, setting, *args, **kwargs):
@@ -144,17 +140,17 @@ class SettingsViewer(QtWidgets.QDialog):
 
         :param Setting  setting:
         """
-        value = bool(setting.property('value'))
+        value = bool(setting.get())
         for subsetting in setting.subsettings:
             # Setting might not be in the viewer (hidden, skipped, etc...)
             widgets = self._rows.get(subsetting)
             if widgets is None:
                 continue
 
-            # If parent has no valid value, disable all
+            # If any ancestors are None, disable all
             # If self is None, disable all but the None box
             label, widget, checkbox = widgets
-            curr_value = value & subsetting.property('value') is not None
+            curr_value = value & (subsetting.property('value') is not None)
             label.setEnabled(curr_value)
             widget.setEnabled(curr_value)
             if checkbox:

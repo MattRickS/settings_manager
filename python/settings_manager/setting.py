@@ -3,18 +3,16 @@ from settings_manager.exceptions import *
 
 class Setting(object):
     def __init__(self, name, default, choices=None, data_type=None,
-                 enabled=True, hidden=False, label=None, minmax=None,
-                 nullable=False, parent=None, tooltip=None, widget=None, **kwargs):
+                 hidden=False, label=None, minmax=None, nullable=False,
+                 parent=None, tooltip=None, widget=None, **kwargs):
         """
-        :param str      name:      The name of the setting. Used to get and set the value.
-        :param object   default:   Default value. If None, data_type is required.
+        :param str      name:       Name of the setting. Used to get and set the value.
+        :param object   default:    Default value. If None, data_type is required.
 
-        :param list     choices:    A list of fixed values for the setting.
-        :param          data_type:  The type of the value. Inferred from default if not given.
-        :param bool     enabled:    UI setting. If nullable is True, this determines whether the
-                                    setting should be disabled/enabled.
+        :param list     choices:    List of fixed values for the setting.
+        :param          data_type:  Type of the value. Inferred from default if not given.
         :param bool     hidden:     Whether or not the setting should be visible.
-        :param str      label:      UI setting. The display name for the setting (defaults to name).
+        :param str      label:      UI setting. Display name for the setting (defaults to name).
         :param tuple    minmax:     Tuple of minimum and maximum values for floats and ints.
                                     If provided with choices, the setting becomes a list type,
                                     and minmax defines the number of choices that can be selected.
@@ -23,8 +21,8 @@ class Setting(object):
                                     setting to be get/set. Calling get() on a setting whose parent
                                     does not evaluate True will return None.
         :param bool     tooltip:    Description message for widget tooltip and parser help
-        :param          widget:     UI setting. A callable object that can return a UI widget to use
-                                    for this setting. If omitted, a default UI will be generated.
+        :param          widget:     UI setting. Callable object that returns a UI widget to use
+                                    for this setting. If None, a default UI will be generated.
         """
         if not isinstance(name, str):
             raise SettingsError("Setting names must be strings: {}".format(name))
@@ -101,7 +99,6 @@ class Setting(object):
         }
         self._properties.update(kwargs)
 
-        self._enabled = enabled
         self._name = name
         self._subsettings = []
         self._type = data_type
@@ -178,32 +175,15 @@ class Setting(object):
 
         return args
 
-    def disable(self):
-        self._enabled = False
-        for setting in self._subsettings:
-            setting.disable()
-
-    def enable(self):
-        self._enabled = True
-        for setting in self._subsettings:
-            if setting.property('value'):
-                setting.enable()
-
     def get(self):
         """
         Returns the value. If the key is disabled of has a
         parent whose value is False, returns None.
         """
         # Check if disabled or parent evaluates to False
-        if not self.is_enabled() or (self.parent and not self.parent.get()):
+        if self.parent and not self.parent.get():
             return None
         return self._properties['value']
-
-    def is_enabled(self):
-        """
-        :rtype: bool
-        """
-        return self._enabled
 
     def property(self, name):
         """
@@ -275,7 +255,3 @@ class Setting(object):
 
     def _set(self, value):
         self._properties['value'] = value
-        if not value:
-            self.disable()
-        elif not self.is_enabled():
-            self.enable()

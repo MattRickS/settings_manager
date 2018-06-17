@@ -79,26 +79,26 @@ class Settings(object):
         return len(self) > 0
 
     def add(self, name, default, choices=None, data_type=None,
-            enabled=True, hidden=False, label=None, minmax=None,
-            nullable=False, parent=None, tooltip='', widget=None, **kwargs):
+            hidden=False, label=None, minmax=None, nullable=False,
+            parent=None, tooltip='', widget=None, **kwargs):
         """
-        :param str          name:      The name of the setting. Used to get and set the value.
-        :param object       default:   Default value. If None, data_type is required.
+        :param str          name:       Name of the setting. Used to get and set the value.
+        :param object       default:    Default value. If None, data_type is required.
 
-        :param list         choices:    A list of fixed values for the setting.
-        :param              data_type:  The type of the value. Inferred from default if not given.
-        :param bool         enabled:    UI setting. If nullable is True, this determines whether the
-                                        setting should be disabled/enabled.
+        :param list         choices:    List of fixed values for the setting.
+        :param              data_type:  Type of the value. Inferred from default if not given.
         :param bool         hidden:     Whether or not the setting should be visible.
-        :param str          label:      UI setting. The display name for the setting (defaults to name).
-        :param tuple        minmax:     Tuple of minimum and maximum values for floats or ints.
+        :param str          label:      UI setting. Display name for the setting (defaults to name).
+        :param tuple        minmax:     Tuple of minimum and maximum values for floats and ints.
+                                        If provided with choices, the setting becomes a list type,
+                                        and minmax defines the number of choices that can be selected.
         :param bool         nullable:   Whether or not None is a valid value.
-        :param Setting|str  parent:     Another setting who's value must evaluate True for this
-                                        setting to be get/set. Calling get() on a setting whose parent
-                                        does not evaluate True will return None.
+        :param Setting|str  parent:     Another Setting who's value must evaluate True for this
+                                        setting to be get/set. Calling get() on a setting whose
+                                        parent does not evaluate True will return None.
         :param bool         tooltip:    Description message for widget tooltip and parser help
-        :param              widget:     UI setting. A callable object that can return a UI widget to use
-                                        for this setting. If omitted, a default UI will be generated.
+        :param              widget:     UI setting. Callable object that returns a UI widget to use
+                                        for this setting. If None, a default UI will be generated.
         :rtype: Setting
         """
         if name in self._settings:
@@ -106,9 +106,9 @@ class Settings(object):
         if isinstance(parent, str):
             parent = self.setting(parent)
         setting = Setting(name, default, choices=choices, data_type=data_type,
-                          enabled=enabled, hidden=hidden, label=label,
-                          minmax=minmax, nullable=nullable, parent=parent,
-                          tooltip=tooltip, widget=widget, **kwargs)
+                          hidden=hidden, label=label, minmax=minmax,
+                          nullable=nullable, parent=parent, tooltip=tooltip,
+                          widget=widget, **kwargs)
         self._settings[name] = setting
         return setting
 
