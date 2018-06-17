@@ -18,7 +18,9 @@ class Setting(object):
                                     setting should be disabled/enabled.
         :param bool     hidden:     Whether or not the setting should be visible.
         :param str      label:      UI setting. The display name for the setting (defaults to name).
-        :param tuple    minmax:     Tuple of minimum and maximum values for floats or ints.
+        :param tuple    minmax:     Tuple of minimum and maximum values for floats and ints.
+                                    If provided with choices, the setting becomes a list type,
+                                    and minmax defines the number of choices that can be selected.
         :param bool     nullable:   Whether or not None is a valid value.
         :param Setting  parent:     Another setting who's value must evaluate True for this
                                     setting to be get/set. Calling get() on a setting whose parent
@@ -170,10 +172,6 @@ class Setting(object):
         """
         return self._properties.get(name)
 
-    def _set(self, value):
-        self._properties['value'] = value
-        self.settingChanged.emit(self._name, value)
-
     def set(self, value):
         """
         Sets a setting's value. Triggers the settingChanged signal to be emitted.
@@ -235,3 +233,7 @@ class Setting(object):
         # Only import UI when required
         from settings_manager.ui import get_default_widget
         return get_default_widget(self)
+
+    def _set(self, value):
+        self._properties['value'] = value
+        self.settingChanged.emit(self._name, value)
