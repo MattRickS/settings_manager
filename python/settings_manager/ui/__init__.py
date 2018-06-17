@@ -10,7 +10,7 @@ def get_default_widget(setting):
     :param      setting:   Setting object
     :rtype: QtWidgets.QWidget
     """
-    data_type = setting.property('data_type')
+    data_type = setting.type
     choices = setting.property('choices')
     minmax = setting.property('minmax')
     if choices and minmax:

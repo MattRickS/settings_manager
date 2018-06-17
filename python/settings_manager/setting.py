@@ -88,7 +88,6 @@ class Setting(object):
         # Store properties as dict so that additional properties can be added
         self._properties = {
             "choices": choices,
-            "data_type": data_type,  # TODO: Remove this from here
             "default": default,
             "hidden": hidden,
             "label": label or name.replace('_', ' '),
@@ -142,7 +141,9 @@ class Setting(object):
         """
         properties = self._properties.copy()
         properties.update({
+            'data_type': self._type,
             'name': self._name,
+            'parent': self.parent,
             'widget': self._widget,
         })
         return properties
@@ -153,19 +154,18 @@ class Setting(object):
         :return: Dictionary to populate ArgumentParser.add_argument
         """
         default = self._properties['default']
-        data_type = self._properties['data_type']
         choices = self._properties['choices']
         tooltip = self._properties['tooltip']
 
         # TODO: minmax / nargs for multi choice
 
         args = {'help': tooltip}
-        if data_type == bool:
+        if self._type == bool:
             args['action'] = 'store_false' if default else 'store_true'
-        elif data_type == list:
+        elif self._type == list:
             args['nargs'] = '*'
-        elif data_type != str:
-            args['type'] = data_type
+        elif self._type != str:
+            args['type'] = self._type
 
         if default is not None:
             args['default'] = default
@@ -203,7 +203,8 @@ class Setting(object):
         # Only set value if it has no parent, or parent evaluates to True
         if self.parent and not self.parent.get():
             raise SettingsError(
-                "Setting {!r} cannot be set, parent {!r} is not valid".format(self._name, self.parent.name))
+                "Setting {!r} cannot be set, parent {!r} is not valid".format(self._name,
+                                                                              self.parent.name))
 
         # Nullable can set without further validation
         nullable = self._properties['nullable']
@@ -212,8 +213,7 @@ class Setting(object):
             return
 
         # Ensure type is valid
-        data_type = self._properties['data_type']
-        if not isinstance(value, data_type):
+        if not isinstance(value, self._type):
             raise SettingsError(
                 "Invalid value type {!r} for setting {!r}".format(value, self._name))
 
