@@ -17,4 +17,4 @@ class IntSetting(QtWidgets.QSpinBox, BaseSettingsUI):
             self.setMaximum(int(hi))
 
         # Connection
-        self.valueChanged.connect(self.settingChanged.emit)
+        self.valueChanged.connect(self.onValueChanged)

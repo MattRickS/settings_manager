@@ -1,10 +1,7 @@
 from settings_manager.exceptions import *
-from settings_manager.custom_signal import Signal
 
 
 class Setting(object):
-    settingChanged = Signal(str, object)  # name, value
-
     def __init__(self, name, default, choices=None, data_type=None,
                  enabled=True, hidden=False, label=None, minmax=None,
                  nullable=False, parent=None, tooltip=None, widget=None, **kwargs):
@@ -32,10 +29,7 @@ class Setting(object):
         if not isinstance(name, str):
             raise SettingsError("Setting names must be strings: {}".format(name))
 
-        if parent is not None and not isinstance(parent, Setting):
-            raise SettingsError("Parent must be a Setting object")
-
-        # Hard rule, as they both are restrictions on valid values
+        # Special case modifies data_type before validation
         is_multi_choice = minmax is not None and choices is not None
         if is_multi_choice:
             data_type = list
@@ -91,20 +85,29 @@ class Setting(object):
         # Store properties as dict so that additional properties can be added
         self._properties = {
             "choices": choices,
-            "data_type": data_type,
+            "data_type": data_type,  # TODO: Remove this from here
             "default": default,
-            "enabled": enabled,
             "hidden": hidden,
             "label": label or name.replace('_', ' '),
             "minmax": minmax,
             "nullable": nullable or (default is None),
-            "parent": parent,
             "tooltip": tooltip or '',
             "value": default,
         }
         self._properties.update(kwargs)
+
+        self._enabled = enabled
         self._name = name
+        self._subsettings = []
+        self._type = data_type
         self._widget = widget
+
+        # Must be appended after all validation, or an invalid Setting could be stored
+        self.parent = None
+        if parent is not None:
+            if not isinstance(parent, Setting):
+                raise SettingsError("Parent must be a Setting object")
+            parent.add_subsetting(self)
 
     @property
     def name(self):
@@ -112,6 +115,21 @@ class Setting(object):
         :rtype: str
         """
         return self._name
+
+    @property
+    def subsettings(self):
+        return self._subsettings[:]
+
+    @property
+    def type(self):
+        return self._type
+
+    def add_subsetting(self, setting):
+        """
+        :param Setting setting:
+        """
+        self._subsettings.append(setting)
+        setting.parent = self
 
     def as_dict(self):
         """
@@ -152,18 +170,32 @@ class Setting(object):
 
         return args
 
+    def disable(self):
+        self._enabled = False
+        for setting in self._subsettings:
+            setting.disable()
+
+    def enable(self):
+        self._enabled = True
+        for setting in self._subsettings:
+            if setting.property('value'):
+                setting.enable()
+
     def get(self):
         """
         Returns the value. If the key is disabled of has a
         parent whose value is False, returns None.
         """
-        # Check if disabled
-        # Check if parent evaluates to False
-        parent = self._properties['parent']
-        enabled = self._properties['enabled']
-        if not enabled or (parent and not parent.get()):
+        # Check if disabled or parent evaluates to False
+        if not self.is_enabled() or (self.parent and not self.parent.get()):
             return None
         return self._properties['value']
+
+    def is_enabled(self):
+        """
+        :rtype: bool
+        """
+        return self._enabled
 
     def property(self, name):
         """
@@ -181,10 +213,9 @@ class Setting(object):
         :param value:
         """
         # Only set value if it has no parent, or parent evaluates to True
-        parent = self._properties['parent']
-        if parent and not parent.get():
+        if self.parent and not self.parent.get():
             raise SettingsError(
-                "Setting {!r} cannot be set, parent {!r} is not valid".format(self._name, parent))
+                "Setting {!r} cannot be set, parent {!r} is not valid".format(self._name, self.parent.name))
 
         # Nullable can set without further validation
         nullable = self._properties['nullable']
@@ -236,4 +267,7 @@ class Setting(object):
 
     def _set(self, value):
         self._properties['value'] = value
-        self.settingChanged.emit(self._name, value)
+        if not value:
+            self.disable()
+        elif not self.is_enabled():
+            self.enable()

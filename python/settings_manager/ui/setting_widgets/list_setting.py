@@ -66,33 +66,35 @@ class ListSetting(QtWidgets.QWidget, BaseSettingsUI):
 
         self.add_btn.clicked.connect(self._on_add_btn_clicked)
         self.sub_btn.clicked.connect(self._on_sub_btn_clicked)
-        self.list_widget.itemChanged.connect(self.settingChanged.emit)
+        self.list_widget.itemChanged.connect(self.onValueChanged)
 
     def setValue(self, value):
         self.list_widget.clear()
-        self.list_widget.addItems([str(x) for x in value])
+        self.list_widget.addItems(value)
 
-    def onSettingChanged(self, value=None):
+    def value(self):
         # All items to text
         lst = list()
         for row in range(self.list_widget.count()):
             text = self.list_widget.item(row).text()
             lst.append(text)
+        return lst
 
-        self._setting.set(lst)
+    def onValueChanged(self, value):
+        super(ListSetting, self).onValueChanged(self.value())
 
     def _on_add_btn_clicked(self):
         enter_item = EnterItemDialog()
         if enter_item.exec_():
             text = enter_item.line_edit.text()
             item = self.list_widget.addItem(text)
-            self.settingChanged.emit(item)
+            self.list_widget.itemChanged.emit(item)
 
     def _on_sub_btn_clicked(self):
         for item in self.list_widget.selectedItems():
             index = self.list_widget.indexFromItem(item)
             self.list_widget.takeItem(index.row())
-        self.settingChanged.emit(None)
+            self.list_widget.itemChanged.emit(item)
 
 
 if __name__ == '__main__':

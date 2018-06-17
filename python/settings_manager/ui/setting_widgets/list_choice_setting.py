@@ -18,13 +18,18 @@ class ListChoiceSetting(CheckableComboBox, BaseSettingsUI):
         minmax = setting.property('minmax')
         self.setDefaultText('Select {}-{} items...'.format(*minmax))
 
-        self.itemStateChanged.connect(self.settingChanged.emit)
+        self.itemStateChanged.connect(self.onValueChanged)
 
     def setValue(self, value):
         if not isinstance(value, list):
             value = [value]
         for row in range(self.model().rowCount()):
             self.setItemChecked(row, self.itemText(row) in value)
+        self.itemStateChanged.emit(None)
+        # self.onValueChanged(value)
+
+    def value(self):
+        return [i.data(QtCore.Qt.DisplayRole) for i in self.checkedItems()]
 
     def onItemPressed(self, index):
         num_selected = len(list(self.checkedItems()))
@@ -37,9 +42,9 @@ class ListChoiceSetting(CheckableComboBox, BaseSettingsUI):
             pass
         self._changed = True
 
-    def onSettingChanged(self, value):
+    def onValueChanged(self, value):
         items = [i.data(QtCore.Qt.DisplayRole) for i in self.checkedItems()]
-        self._setting.set(items)
+        super(ListChoiceSetting, self).onValueChanged(items)
 
 
 if __name__ == '__main__':

@@ -5,6 +5,12 @@ class BaseSettingsUI(object):
     """
     Provides a common interface for settings widgets.
     Must be initialised after the parent widget for the signal to work.
+
+    To subclass:
+        Connect the widget's normal 'value changed' signal to self.onValueChanged
+        Implement setValue() to either call onValueChanged or emit the 'value changed' signal
+        Implement value to return the widget value
+
     """
     settingChanged = QtCore.Signal(object)  # Setting
 
@@ -17,15 +23,19 @@ class BaseSettingsUI(object):
         if value:
             self.setValue(value)
 
-        # Connection
-        self.settingChanged.connect(self.onSettingChanged)
-
     @property
     def setting(self):
         return self._setting
 
     def setValue(self, value):
+        """ For setting the widget value should trigger onValueChanged """
         raise NotImplementedError
 
-    def onSettingChanged(self, value):
+    def value(self):
+        """ Should return UI setting value, eg, Qt.Checked """
+        raise NotImplementedError
+
+    def onValueChanged(self, value):
+        """ Sets the setting and emits the settingChanged signal """
         self._setting.set(value)
+        self.settingChanged.emit(self._setting)

@@ -26,17 +26,18 @@ class SettingsViewer(QtWidgets.QDialog):
             >>>         self.settings.set(setting, value)
     """
 
-    def __init__(self, settings_obj, parent=None, prefix="", skip=None):
+    def __init__(self, settings, parent=None, prefix="", skip=None):
         """
-        :param Settings             settings_obj:   Settings object to build for
-        :param QtWidgets.QWidget    parent:         Parent widget
-        :param str                  prefix:         Name to prefix all setting with (Default blank)
-        :param list[str]            skip:           List of setting names to ignore
+        :param Settings             settings:   Settings object to build for
+        :param QtWidgets.QWidget    parent:     Parent widget
+        :param str                  prefix:     Name to prefix all setting with (Default blank)
+        :param list[str]            skip:       List of setting names to ignore
         """
         super(SettingsViewer, self).__init__(parent)
         self.prefix = prefix
-        self._settings = settings_obj
-        layout = self._build_default_layout(settings_obj, skip=skip)
+        self._settings = settings
+        self._rows = {}
+        layout = self._build_default_layout(skip=skip)
         self.setLayout(layout)
 
     @property
@@ -47,38 +48,19 @@ class SettingsViewer(QtWidgets.QDialog):
         """
         Retrieves the widget for the given setting name.
 
-        :param str setting:
+        :param Setting setting:
         :rtype: QtWidgets.QWidget
         """
-        name = self._settings.setting(setting).property("label")
-        for label, widget, checkbox in self.iter_widgets():
-            if label == name:
-                return widget
-
-    def iter_widgets(self):
-        """
-        Iterates through (setting_label, widget, checkbox/None) tuples
-        """
-        prefix_len = len(self.prefix)
-        for i in range(self.layout().rowCount()):
-            label_item = self.layout().itemAtPosition(i, 0)
-            widget_item = self.layout().itemAtPosition(i, 1)
-            checkbox_item = self.layout().itemAtPosition(i, 2)
-
-            checkbox_widget = checkbox_item.widget() if checkbox_item else None
-            setting_label = label_item.widget().text()[prefix_len:]
-
-            yield setting_label, widget_item.widget(), checkbox_widget
+        return self._rows[setting][1]
 
     # -----------------------------------------------------------------
     #                            PROTECTED
     # -----------------------------------------------------------------
 
-    def _build_default_layout(self, settings_obj, skip=None):
+    def _build_default_layout(self, skip=None):
         """
         Builds a default grid layout for the UI.
 
-        :param Settings settings_obj:
         :rtype: QtWidgets.QGridLayout
         """
         skip = skip or list()
@@ -102,30 +84,30 @@ class SettingsViewer(QtWidgets.QDialog):
 
             # Get the widget defined by the setting - may be user defined
             widget = setting.widget()
-            parent = setting.property('parent')
-            if parent and not parent.get():
+            if setting.parent and not setting.parent.get():
                 widget.setEnabled(False)
+            widget.settingChanged.connect(partial(self.onSettingChanged, setting))
 
             # Add to Layout
             layout.addWidget(label, row, 0, alignment=QtCore.Qt.AlignTop)
             layout.addWidget(widget, row, 1)
 
             # If nullable, add a checkbox to disable the value
+            null_checkbox = None
             if setting.property('nullable'):
-                null_checkbox = QtWidgets.QCheckBox("None")
+                null_checkbox = QtWidgets.QCheckBox('None')
 
                 # Initial state
-                if settings_obj.get(name) is None:
+                if setting.property('value') is None:
                     null_checkbox.setCheckState(QtCore.Qt.Checked)
                     widget.setEnabled(False)
 
-                null_checkbox.stateChanged.connect(partial(self._on_none_checkbox_checked, name))
+                null_checkbox.stateChanged.connect(partial(self._on_none_checkbox_checked, setting))
                 layout.addWidget(null_checkbox, row, 2)
 
-            row += 1
+            self._rows[setting] = (label, widget, null_checkbox)
 
-        # This would be so much easier if children were edited when parent changed
-        self.settings.settingChanged.connect(self.onSettingChanged)
+            row += 1
 
         layout.setColumnStretch(1, 1)
 
@@ -136,25 +118,29 @@ class SettingsViewer(QtWidgets.QDialog):
     # -----------------------------------------------------------------
 
     def _on_none_checkbox_checked(self, setting, state):
-        widget = self.get_widget(setting)
+        label, widget, checkbox = self._rows[setting]
+        if state == QtCore.Qt.Checked:
+            setting.set(None)
+        else:
+            # The previous value is still in the disabled widget, set it back
+            setting.set(widget.value())
         value = state != QtCore.Qt.Checked
+        label.setEnabled(value)
         widget.setEnabled(value)
-        self.onSettingChanged(setting, value)
+        self.onSettingChanged(setting)
 
-    def onSettingChanged(self, setting, enabled):
+    def onSettingChanged(self, setting, *args, **kwargs):
         """
         Recursively update the enabled state of all dependent settings
 
-        :param str      setting:
-        :param object   enabled:
+        :param Setting  setting:
         """
-        enabled = bool(enabled)
-        self._settings.properties(setting)["enabled"] = enabled
-        dependencies = self.settings.dependents(setting)
-        for dependency in dependencies:
-            # Widget might be hidden / not valid - continue recursing but only set valid widgets
-            widget = self.get_widget(dependency)
+        value = bool(setting.get())
+        for subsetting in setting.subsettings:
+            label, widget, checkbox = self._rows[subsetting]
             if widget:
-                widget.setEnabled(enabled)
-            # Recursively update grandchildren
-            self.onSettingChanged(dependency, enabled)
+                label.setEnabled(value)
+                widget.setEnabled(value)
+                if checkbox:
+                    checkbox.setEnabled(value)
+            self.onSettingChanged(subsetting)

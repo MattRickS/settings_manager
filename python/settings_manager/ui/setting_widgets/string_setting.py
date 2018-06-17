@@ -10,15 +10,18 @@ class StringSetting(QtWidgets.QLineEdit, BaseSettingsUI):
         super(StringSetting, self).__init__()
         BaseSettingsUI.__init__(self, setting)
 
-        self.textChanged.connect(self.settingChanged.emit)
+        self.textChanged.connect(self.onValueChanged)
 
     def setValue(self, value):
         self.setText(value)
+        self.textChanged.emit(value)
 
-    def onSettingChanged(self, value):
+    def value(self):
+        return self.text()
+
+    def onValueChanged(self, value):
         # Convert to data type to keep encoding
-        data_type = self._setting.property('data_type')
-        self._setting.set(data_type(value))
+        super(StringSetting, self).onValueChanged(self._setting.type(value))
 
 
 if __name__ == '__main__':

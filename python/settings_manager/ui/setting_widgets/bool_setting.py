@@ -11,20 +11,23 @@ class BoolSetting(QtWidgets.QCheckBox, BaseSettingsUI):
         BaseSettingsUI.__init__(self, setting)
 
         # Connection
-        self.stateChanged.connect(self.settingChanged.emit)
+        self.stateChanged.connect(self.onValueChanged)
 
     # -----------------------------------------------------------------
     #                              SLOTS
     # -----------------------------------------------------------------
 
     def setValue(self, value):
-        if isinstance(value, bool):
-            value = QtCore.Qt.Checked if value else QtCore.Qt.Unchecked
         self.setCheckState(value)
+        self.stateChanged.emit(value)
 
-    def onSettingChanged(self, value):
+    def value(self):
+        return True if self.checkState() == QtCore.Qt.Checked else False
+        # return self.checkState()
+
+    def onValueChanged(self, value):
         value = True if value == QtCore.Qt.Checked else False
-        self._setting.set(value)
+        super(BoolSetting, self).onValueChanged(value)
 
 
 if __name__ == '__main__':

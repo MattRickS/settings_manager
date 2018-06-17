@@ -15,10 +15,14 @@ class ChoiceSetting(QtWidgets.QComboBox, BaseSettingsUI):
 
         BaseSettingsUI.__init__(self, setting)
 
-        self.currentTextChanged.connect(self.settingChanged.emit)
+        self.currentTextChanged.connect(self.onValueChanged)
 
     def setValue(self, value):
         self.setCurrentText(value)
+        self.currentTextChanged.emit(value)
+
+    def value(self):
+        return self.currentText()
 
 
 if __name__ == '__main__':

@@ -16,7 +16,7 @@ class FloatSetting(QtWidgets.QDoubleSpinBox, BaseSettingsUI):
             self.setMinimum(float(lo))
             self.setMaximum(float(hi))
 
-        self.valueChanged.connect(self.settingChanged.emit)
+        self.valueChanged.connect(self.onValueChanged)
 
 
 if __name__ == '__main__':

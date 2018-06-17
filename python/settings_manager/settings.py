@@ -1,7 +1,6 @@
 import json
 import sys
 
-from settings_manager.custom_signal import Signal
 from settings_manager.setting import Setting
 from collections import OrderedDict
 
@@ -45,8 +44,6 @@ class Settings(object):
 
     The SettingsViewer provides a default UI for displaying settings.
     """
-    settingChanged = Signal(str, object)  # name, value
-
     def __init__(self, settings=None):
         """
         :param list|dict    settings:
@@ -85,32 +82,33 @@ class Settings(object):
             enabled=True, hidden=False, label=None, minmax=None,
             nullable=False, parent=None, tooltip='', widget=None, **kwargs):
         """
-        :param str      name:      The name of the setting. Used to get and set the value.
-        :param object   default:   Default value. If None, data_type is required.
+        :param str          name:      The name of the setting. Used to get and set the value.
+        :param object       default:   Default value. If None, data_type is required.
 
-        :param list     choices:    A list of fixed values for the setting.
-        :param          data_type:  The type of the value. Inferred from default if not given.
-        :param bool     enabled:    UI setting. If nullable is True, this determines whether the
-                                    setting should be disabled/enabled.
-        :param bool     hidden:     Whether or not the setting should be visible.
-        :param str      label:      UI setting. The display name for the setting (defaults to name).
-        :param tuple    minmax:     Tuple of minimum and maximum values for floats or ints.
-        :param bool     nullable:   Whether or not None is a valid value.
-        :param Setting  parent:     Another setting who's value must evaluate True for this
-                                    setting to be get/set. Calling get() on a setting whose parent
-                                    does not evaluate True will return None.
-        :param bool     tooltip:    Description message for widget tooltip and parser help
-        :param          widget:     UI setting. A callable object that can return a UI widget to use
-                                    for this setting. If omitted, a default UI will be generated.
+        :param list         choices:    A list of fixed values for the setting.
+        :param              data_type:  The type of the value. Inferred from default if not given.
+        :param bool         enabled:    UI setting. If nullable is True, this determines whether the
+                                        setting should be disabled/enabled.
+        :param bool         hidden:     Whether or not the setting should be visible.
+        :param str          label:      UI setting. The display name for the setting (defaults to name).
+        :param tuple        minmax:     Tuple of minimum and maximum values for floats or ints.
+        :param bool         nullable:   Whether or not None is a valid value.
+        :param Setting|str  parent:     Another setting who's value must evaluate True for this
+                                        setting to be get/set. Calling get() on a setting whose parent
+                                        does not evaluate True will return None.
+        :param bool         tooltip:    Description message for widget tooltip and parser help
+        :param              widget:     UI setting. A callable object that can return a UI widget to use
+                                        for this setting. If omitted, a default UI will be generated.
         :rtype: Setting
         """
         if name in self._settings:
             raise SettingsError("Setting already exists: {!r}".format(name))
+        if isinstance(parent, str):
+            parent = self.setting(parent)
         setting = Setting(name, default, choices=choices, data_type=data_type,
                           enabled=enabled, hidden=hidden, label=label,
                           minmax=minmax, nullable=nullable, parent=parent,
                           tooltip=tooltip, widget=widget, **kwargs)
-        setting.settingChanged.connect(self.settingChanged)
         self._settings[name] = setting
         return setting
 
