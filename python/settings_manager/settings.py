@@ -1,36 +1,55 @@
+from collections import OrderedDict
+import argparse
 import json
 import sys
 
+from settings_manager.exceptions import SettingsError
 from settings_manager.setting import Setting
-from collections import OrderedDict
+from settings_manager import util
 
 
-def byteify(data):
-    """
-    *** Python 2 only ***
-    Recursively converts all unicode elements in a dict back to string objects.
+# Can this just be integrated onto the Settings object?
+class SubSettings(object):
+    def __init__(self, name, settings, nullable=False):
+        # type: (str, Settings, bool) -> None
+        self._name = name
+        self._settings = settings
+        self._nullable = nullable
+        self._enabled = True
 
-    :param dict data:
-    :rtype: OrderedDict
-    """
-    if isinstance(data, dict):
-        return OrderedDict(((byteify(key), byteify(value)) for key, value in data.items()))
-    elif isinstance(data, list):
-        return [byteify(element) for element in data]
-    elif isinstance(data, unicode):
-        return data.encode('utf-8')
-    else:
-        return data
+    @property
+    def name(self):
+        # type: () -> str
+        # Is name necessary on this object?
+        # Should it handle parent?
+        return self._name
 
+    @property
+    def settings(self):
+        # type: () -> Settings
+        return self._settings
 
-class SettingsError(Exception):
-    pass
+    def is_enabled(self):
+        # type: () -> bool
+        return self._enabled
+
+    def is_nullable(self):
+        # type: () -> bool
+        return self._nullable
+
+    def set_enabled(self, enabled):
+        # type: (bool) -> None
+        if not self._nullable and not enabled:
+            raise SettingsError('Group {!r} is not nullable'.format(self._name))
+        self._enabled = enabled
 
 
 class Settings(object):
     """
     Convenience class for storing settings with explicit data types.
     Settings are added via Settings.add() and can be get / set as properties, or as keys.
+
+    Settings objects can be nested to provide grouping
 
     eg,
 
@@ -41,8 +60,6 @@ class Settings(object):
     'None'
     >>> settings['some_value']
     3
-
-    The SettingsViewer provides a default UI for displaying settings.
     """
     def __init__(self, settings=None):
         """
@@ -54,18 +71,26 @@ class Settings(object):
                 * List of single dicts; {setting_name: value}
                 * List of tuples; (setting_name, value)
         """
-        self._settings = OrderedDict()
+        self._contents = OrderedDict()
         self._widget = None
-        self.add_settings(settings)
+
+        if settings is not None:
+            self.add_batch_settings(settings)
+
+    # def __getattr__(self, item):
+    #     return self.get(item)
 
     def __getitem__(self, item):
         return self.get(item)
 
     def __iter__(self):
-        return iter(self._settings)
+        return iter(self._contents)
 
     def __len__(self):
-        return len(self._settings)
+        return len(self._contents)
+
+    # def __setattr__(self, key, value):
+    #     self.set(key, value)
 
     def __setitem__(self, key, value):
         self.set(key, value)
@@ -78,9 +103,19 @@ class Settings(object):
     def __bool__(self):
         return len(self) > 0
 
+    def add_subsettings(self, name, settings, nullable=False):
+        """
+        :param str      name:
+        :param Settings settings:
+        :param bool     nullable:
+        """
+        if name in self._contents:
+            raise SettingsError('Setting already exists: {!r}'.format(name))
+        self._contents[name] = SubSettings(name, settings, nullable=nullable)
+
     def add(self, name, default, choices=None, data_type=None,
             hidden=False, label=None, minmax=None, nullable=False,
-            parent=None, tooltip='', widget=None, **kwargs):
+            tooltip='', widget=None, **kwargs):
         """
         :param str          name:       Name of the setting.
         :param object       default:    Value. If None, data_type is required.
@@ -98,29 +133,23 @@ class Settings(object):
                                         type, and minmax defines the number of 
                                         choices that can be selected.
         :param bool         nullable:   Whether or not None is a valid value.
-        :param Setting|str  parent:     Another Setting who's value must 
-                                        evaluate True for this setting to be 
-                                        get/set. Calling get() on a setting 
-                                        whose parent does not evaluate True will 
-                                        return None.
         :param bool         tooltip:    Description message for widget tooltip 
                                         and parser help
         :param              widget:     UI setting. Callable object that returns 
                                         a UI widget to use for this setting. If 
                                         None, a default UI will be generated.
+        :rtype: Setting
         """
-        if name in self._settings:
+        if name in self._contents:
             raise SettingsError('Setting already exists: {!r}'.format(name))
-        if isinstance(parent, str):
-            parent = self.setting(parent)
         setting = Setting(name, default, choices=choices, data_type=data_type,
                           hidden=hidden, label=label, minmax=minmax,
-                          nullable=nullable, parent=parent, tooltip=tooltip,
+                          nullable=nullable, tooltip=tooltip,
                           widget=widget, **kwargs)
-        self._settings[name] = setting
+        self._contents[name] = setting
         return setting
 
-    def add_settings(self, settings):
+    def add_batch_settings(self, settings):
         """
         :param list|dict    settings:
             Settings can be accepted in multiple forms to allow for ordering:
@@ -130,6 +159,9 @@ class Settings(object):
                 * List of single dicts; {setting_name: value}
                 * List of tuples; (setting_name, value)
         """
+        # TODO:
+        # Subsettings
+        # Recursive
         if isinstance(settings, dict):
             for setting, data in settings.items():
                 # Dictionary of properties {setting_name: {...}}
@@ -162,12 +194,11 @@ class Settings(object):
         :param bool         hidden: If true, includes hidden keys
         :return:
         """
-        # Uses for argparse in normal runtime are extremely limited, import only
-        # when required
-        import argparse
+        # TODO:
+        # subparsers for subsettings
         parser = argparse.ArgumentParser()
 
-        for setting in self._settings.values():
+        for setting in self._contents.values():
             if keys:
                 if setting.name not in keys:
                     continue
@@ -175,7 +206,7 @@ class Settings(object):
                 continue
 
             args = setting.as_parser_args()
-            parser.add_argument('--' + setting.name, **args)
+            parser.add_argument(args.pop('flag'), **args)
 
         return parser
 
@@ -187,51 +218,28 @@ class Settings(object):
         :param bool values_only: If True, only writes values instead of full properties
         :rtype: dict
         """
-        items = ((s.name, s.get()) if values_only else (s.name, s.as_dict()) for s in self._settings.values())
+        generator = ((s.name, s.get()) if values_only else (s.name, s.as_dict())
+                     for s in self._contents.values())
         data_type = OrderedDict if ordered else dict
-        return data_type(items)
-
-    def dependents(self, key):
-        """
-        Yields all settings whose parent property is the given setting name.
-        This is not recursive, only lists first generation dependencies.
-
-        :param str key:
-        :rtype: str
-        """
-        for setting in self._settings.values():
-            if setting.property('parent') == key:
-                yield setting
+        return data_type(generator)
 
     def get(self, key):
         """
-        Returns the value for the given setting name.
-        If the key is disabled of has a parent whose value is False, returns None.
-
         :raise: KeyError if key is not a valid setting
 
         :param str key:
+        :return: Value for the given setting name.
         """
-        return self._settings[key].get()
+        return self._contents[key].get()
 
     def has_visible(self):
         """
-        Returns True if any settings are visible to the UI.
+        Returns True if any contents have the hidden property disabled.
 
         :rtype: bool
         """
-        return any(not s.property('hidden') for s in self._settings.values())
-
-    def properties(self, key):
-        """
-        Returns the setting properties for the given key
-
-        :raise: KeyError if key is not a valid setting
-
-        :param str key: Name of setting to return properties for
-        :rtype: dict
-        """
-        return self._settings[key].as_dict()
+        # TODO: Handle subsettings
+        return any(not s.property('hidden') for s in self._contents.values())
 
     def reset(self):
         """
@@ -239,8 +247,9 @@ class Settings(object):
 
         :return:
         """
-        for setting in self._settings.values():
-            setting.set(setting.property('default'))
+        # TODO: Handle subsettings
+        for setting in self._contents.values():
+            setting.reset()
 
     def set(self, key, value):
         """
@@ -252,7 +261,7 @@ class Settings(object):
         :param object value:
         """
         # Ensure the setting exists
-        setting = self._settings.get(key)
+        setting = self._contents.get(key)
         if setting is None:
             raise SettingsError('No setting exists for: {!r}'.format(key))
 
@@ -273,7 +282,7 @@ class Settings(object):
         :param str  key:
         :rtype: Setting
         """
-        return self._settings.get(key)
+        return self._contents.get(key)
 
     def setting_widget(self, key, *args, **kwargs):
         """
@@ -283,7 +292,7 @@ class Settings(object):
         :param str key:
         :return: UI Widget object
         """
-        return self._settings.get(key).widget(*args, **kwargs)
+        return self._contents.get(key).widget(*args, **kwargs)
 
     def to_json(self, ordered=True, values_only=False):
         """
@@ -337,7 +346,7 @@ class Settings(object):
 
         # Convert data from unicode to string (python 2 only)
         if sys.version_info[0] < 3:
-            data = byteify(data)
+            data = util.byteify(data)
 
         # Types are converted to strings in json, evaluate them back to types
         for setting_data in data.values():

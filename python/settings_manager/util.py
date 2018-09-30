@@ -1,4 +1,23 @@
+from collections import OrderedDict
 import argparse
+
+
+def byteify(data):
+    """
+    *** Python 2 only ***
+    Recursively converts all unicode elements in a dict back to string objects.
+
+    :param dict data:
+    :rtype: OrderedDict
+    """
+    if isinstance(data, dict):
+        return OrderedDict(((byteify(key), byteify(value)) for key, value in data.items()))
+    elif isinstance(data, list):
+        return [byteify(element) for element in data]
+    elif isinstance(data, unicode):
+        return data.encode('utf-8')
+    else:
+        return data
 
 
 def required_length(lo, hi):
