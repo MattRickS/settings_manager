@@ -116,9 +116,6 @@ class TestSetting(object):
     def test_get(self):
         s = Setting('key', 0)
         assert s.get() == 0
-        parent = Setting('parent', False)
-        child = Setting('child', 1, parent=parent)
-        assert child.get() is None
 
     def test_has_property(self):
         s = Setting('key', 0, custom=1)

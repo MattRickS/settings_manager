@@ -1,43 +1,13 @@
 import copy
 
-from settings_manager.exceptions import *
-
-import argparse
-
-
-def required_length(lo, hi):
-    class RequiredLength(argparse.Action):
-        def __call__(self, parser, args, values, option_string=None):
-            if not lo <= len(values) <= hi:
-                msg = 'Argument {!r} requires between {} and {} arguments'.format(
-                    self.dest, lo, hi
-                )
-                raise argparse.ArgumentTypeError(msg)
-            setattr(args, self.dest, values)
-
-    return RequiredLength
-
-
-def class_from_string(string):
-    """
-    Attempts to resolve a class from the global scope.
-
-    :param str  string:
-    :rtype: type
-    """
-    global_dict = globals()
-    cls = global_dict['__builtins__'].get(string)
-    if cls is None:
-        cls = global_dict.get(string)
-    if cls is None:
-        raise TypeError('Unknown type')
-    return cls
+from settings_manager.exceptions import SettingsError
+from settings_manager import util
 
 
 class Setting(object):
     def __init__(self, name, default, choices=None, data_type=None,
                  hidden=False, label=None, minmax=None, nullable=False,
-                 parent=None, tooltip=None, widget=None, **kwargs):
+                 tooltip=None, widget=None, **kwargs):
         """
         :param str        name:       Name of the setting.
         :param object     default:    Value. If None, data_type is required.
@@ -55,82 +25,27 @@ class Setting(object):
                                       minmax defines the number of choices that 
                                       can be selected.
         :param bool       nullable:   Whether or not None is a valid value.
-        :param Setting    parent:     Another setting who's value must evaluate 
-                                      True for this setting to be get/set. 
-                                      Calling get() on a setting whose parent
-                                      does not evaluate True will return None.
         :param bool       tooltip:    Description message for widget tooltip and 
                                       parser help
         :param type       widget:     UI setting. Callable object that returns a
                                       UI widget to use for this setting. If 
                                       None, a default UI will be generated.
         """
-        if not isinstance(name, str):
-            raise SettingsError(
-                'Setting names must be strings: {}'.format(name))
-
-        # When there are multiple choices and a given range, enforce a
-        # list data type (ie, value must be a subset of choices). This
-        # modifies data type so must be done before normal validation.
-        is_multi_choice = minmax is not None and choices is not None
-        if is_multi_choice:
-            data_type = list
-
-        # Determine data_type
-        if isinstance(data_type, str):
-            # If data_type was given as a string, eg, via a configuration,
-            # get the actual type object.
-            try:
-                data_type = class_from_string(data_type)
-            except TypeError:
-                raise SettingsError(
-                    'Unknown data_type for setting: {!r}'.format(name))
-        if data_type is None and default is None:
-            raise SettingsError('Unknown data type for setting {!r}. '
-                                'Must specify a data type or valid '
-                                'default value'.format(name))
-        data_type = data_type or type(default)
-
-        # minmax must be 2 numeric values that define a numeric range,
-        # or a length validation for strings.
-        if minmax is not None:
-            # If minmax is a single value, set it as both the min and max
-            # This is only really relevant for a fixed string length
-            minmax = minmax if hasattr(minmax, '__iter__') else (minmax, minmax)
-            if not len(minmax) == 2 and not all(isinstance(i, (int, float)) for i in minmax):
-                raise SettingsError(
-                    'Invalid minmax value for setting {!r}: '
-                    'Must be tuple of 2 numeric values.'.format(name))
-            lo, hi = minmax
-            if lo < 0:
-                raise SettingsError(
-                    'Invalid minmax range for setting {!r}: '
-                    'Cannot have negative range')
-            if hi < lo:
-                raise SettingsError(
-                    'Invalid minmax range for setting {!r}: '
-                    'Max cannot be lower than min'.format(name)
-                )
-
-        # Multi choice is a list of values chosen from choices. The number
-        # of choices required are defined by minmax. Only string values are
-        # currently supported.
-        if is_multi_choice:
-            if not all(isinstance(x, str) for x in choices):
-                raise SettingsError('Multi choice lists must be strings')
-        # Choices by itself requires a single value chosen from the list
-        elif choices is not None:
-            if not all(isinstance(c, data_type) for c in choices):
-                raise SettingsError(
-                    "{!r}'s choices do not match "
-                    "the data type: {}".format(name, data_type))
-
         # Fixed properties
-        self._name = name
-        self._type = data_type
+        self._name = self._validate_name(name)
+        self._type = self._validate_data_type(data_type, default, choices, minmax)
         self._value = None
 
-        # Set known properties and add any user defined properties
+        # Validate optional properties
+        if minmax is not None:
+            minmax = self._validate_minmax(minmax)
+        if minmax is not None and choices is not None:
+            self._validate_multi_choice(choices, minmax)
+        # Only validate choices separately if multi choice hasn't validated
+        elif choices is not None:
+            choices = self._validate_choices(choices)
+
+        # Set optional and user defined properties
         self._properties = {
             'choices': choices,
             'default': default,
@@ -143,19 +58,8 @@ class Setting(object):
         }
         self._properties.update(kwargs)
 
-        # Setting hierarchy
-        self._subsettings = []
-        self._parent = None
-
         # Attempt to set the default value to validate it
         self.set(default)
-
-        # Parent must be assigned after all validation, or the instance won't
-        # be garbage collected as it's stored in the parents subsettings.
-        if parent is not None:
-            if not isinstance(parent, Setting):
-                raise SettingsError('Parent must be a Setting object')
-            parent.add_subsetting(self)
 
     def __str__(self):
         return self._name
@@ -166,24 +70,9 @@ class Setting(object):
         return self._name
 
     @property
-    def parent(self):
-        # type: () -> Setting
-        return self._parent
-
-    @property
-    def subsettings(self):
-        # type: () -> list[Setting]
-        return self._subsettings[:]
-
-    @property
     def type(self):
         # type: () -> type
         return self._type
-
-    def add_subsetting(self, setting):
-        # type: (Setting) -> None
-        self._subsettings.append(setting)
-        setting._parent = self
 
     def as_dict(self):
         # type: () -> dict
@@ -191,7 +80,6 @@ class Setting(object):
         properties.update({
             'data_type': self._type,
             'name': self._name,
-            'parent': self._parent,
             'value': copy.copy(self._value),  # Must be immutable
         })
         return properties
@@ -229,7 +117,7 @@ class Setting(object):
             minmax = self._properties['minmax']
             if minmax:
                 lo, hi = minmax
-                args['action'] = required_length(lo, hi)
+                args['action'] = util.required_length(lo, hi)
                 if lo > 0:
                     nargs = '+'
             args['nargs'] = nargs
@@ -250,10 +138,8 @@ class Setting(object):
         Returns the value. If the key is disabled of has a
         parent whose value is False, returns None.
         """
-        # Check if disabled or parent evaluates to False
-        if self._parent and not self._parent.get():
-            return None
-        return self._value
+        # Accessor only
+        return copy.copy(self._value)
 
     def has_property(self, name):
         # type: (str) -> bool
@@ -275,12 +161,6 @@ class Setting(object):
         :raise: SettingsError if not a valid value.
         :param value:
         """
-        # Only set value if it has no parent, or parent evaluates to True
-        if self._parent and not self._parent.get():
-            raise SettingsError(
-                'Setting {!r} cannot be set, parent {!r} '
-                'is not valid'.format(self._name, self._parent.name))
-
         # Nullable can set without further validation
         nullable = self._properties['nullable']
         if value is None and nullable:
@@ -321,6 +201,21 @@ class Setting(object):
 
         self._set(value)
 
+    def set_property(self, name, value):
+        if name == 'choices':
+            value = self._validate_choices(value)
+            minmax = self._properties['minmax']
+            self._validate_multi_choice(value, minmax)
+        elif name == 'minmax':
+            value = self._validate_minmax(value)
+            choices = self._properties['choices']
+            self._validate_multi_choice(choices, value)
+        elif name == 'nullable' and not value and self._value is None:
+            # Could optionally call self._type() to set the value for them,
+            # but try to avoid auto-magic
+            raise SettingsError('Cannot disable nullable property while value is nullable')
+        self._properties[name] = value
+
     def widget(self, *args, **kwargs):
         """
         Retrieves the assigned widget, or a default widget.
@@ -338,3 +233,86 @@ class Setting(object):
 
     def _set(self, value):
         self._value = value
+
+    def _validate_choices(self, choices):
+        # type: (list) -> list
+        if not all(isinstance(c, self._type) for c in choices):
+            raise SettingsError(
+                "{!r}'s choices do not match "
+                "the data type: {}".format(self._name, self._type))
+        return choices
+
+    def _validate_data_type(self, data_type, default, choices=None, minmax=None):
+        # When there are multiple choices and a given range, enforce a
+        # list data type (ie, value must be a subset of choices). This
+        # modifies data type so must be done before normal validation.
+        if choices is not None and minmax is not None:
+            data_type = list
+
+        # Determine data_type
+        if isinstance(data_type, str):
+            # If data_type was given as a string, eg, via a configuration,
+            # get the actual type object.
+            try:
+                data_type = util.class_from_string(data_type)
+            except TypeError:
+                raise SettingsError(
+                    'Unknown data_type for setting: {!r}'.format(self._name))
+        if data_type is None and default is None:
+            raise SettingsError('Unknown data type for setting {!r}. '
+                                'Must specify a data type or valid '
+                                'default value'.format(self._name))
+        data_type = data_type or type(default)
+        return data_type
+
+    def _validate_minmax(self, minmax):
+        # type: (tuple) -> tuple[int|float]
+        # minmax must be 2 numeric values that define a numeric range,
+        # or a length validation for strings.
+        # If minmax is a single value, set it as both the min and max
+        # This is only really relevant for a fixed string length
+        minmax = minmax if hasattr(minmax, '__iter__') else (minmax, minmax)
+        if not len(minmax) == 2 and not all(isinstance(i, (int, float)) for i in minmax):
+            raise SettingsError(
+                'Invalid minmax value for setting {!r}: '
+                'Must be tuple of 2 numeric values.'.format(self._name))
+        lo, hi = minmax
+        if lo < 0:
+            raise SettingsError(
+                'Invalid minmax range for setting {!r}: '
+                'Cannot have negative range')
+        if hi < lo:
+            raise SettingsError(
+                'Invalid minmax range for setting {!r}: '
+                'Max cannot be lower than min'.format(self._name)
+            )
+        return minmax
+
+    @staticmethod
+    def _validate_multi_choice(choices, minmax):
+        # type: (list, tuple) -> None
+        # Multi choice is a list of values chosen from choices. The number
+        # of choices required are defined by minmax. Only string values are
+        # currently supported.
+        if not all(isinstance(x, str) for x in choices):
+            raise SettingsError('Multi choice lists must be strings')
+        lo, hi = minmax
+        num_choices = len(choices)
+        if num_choices < lo or num_choices > hi:
+            raise SettingsError(
+                'Insufficient choices ({}) to meet minmax '
+                'requirement: {}'.format(num_choices, minmax)
+            )
+
+    @staticmethod
+    def _validate_name(name):
+        # type: (str) -> str
+        if not isinstance(name, str):
+            raise SettingsError(
+                'Setting names must be strings: {}'.format(name))
+        if any(char.isspace() for char in name):
+            raise SettingsError(
+                'Setting names cannot have whitespace. '
+                'Use label for display names'
+            )
+        return name
