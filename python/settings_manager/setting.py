@@ -160,7 +160,12 @@ class Setting(object):
         return copy.copy(self._properties[name])
 
     def reset(self):
-        """ Resets a setting to it's initial value """
+        """
+        Resets a setting to it's initial value
+
+        Warning:
+            Does not alter properties
+        """
         self.set(self.property('default'))
 
     def set(self, value):

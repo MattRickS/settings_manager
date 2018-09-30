@@ -52,22 +52,22 @@ def mock_settings_config_flat_dict():
     }
 
 
-class TestSettings(object):
+class TestSettingsGroup(object):
     @pytest.mark.parametrize('name, default, properties', (
         ('key', 1, {}),
         ('key', 'value', {'choices': ['value', 'other']}),
     ))
     def test_add(self, name, default, properties):
         # Compare setting added via Settings object to direct instantiation
-        s1 = SettingsGroup().add(name, default, **properties)
+        s1 = SettingsGroup().add_setting(name, default, **properties)
         s2 = Setting(name, default, **properties)
         assert s1 == s2
 
     def test_add__unique_names(self):
         s = SettingsGroup()
-        s.add('key', 1)
+        s.add_setting('key', 1)
         with pytest.raises(SettingsError):
-            s.add('key', 2)
+            s.add_setting('key', 2)
 
     def test_add_batch_settings(self, mock_settings_config_list, mock_settings_config_dict):
         s = SettingsGroup()
@@ -89,8 +89,8 @@ class TestSettings(object):
 
     def test_len(self):
         s = SettingsGroup()
-        s.add('one', 1)
-        s.add('two', 2)
+        s.add_setting('one', 1)
+        s.add_setting('two', 2)
         assert len(s) == 2
 
     def test_iter(self, mock_settings_config_list):

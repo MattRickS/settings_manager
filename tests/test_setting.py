@@ -147,6 +147,13 @@ class TestSetting(object):
         with pytest.raises(KeyError):
             s.property('unknown')
 
+    def test_reset(self):
+        s = Setting('key', 1)
+        s.set(5)
+        assert s.get() == 5
+        s.reset()
+        assert s.get() == 1
+
 
 def test_string_setting():
     s = Setting('key', 'value')

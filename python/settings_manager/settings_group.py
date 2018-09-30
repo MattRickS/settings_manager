@@ -63,8 +63,8 @@ class SettingsGroup(object):
     eg,
 
     >>> settings = SettingsGroup()
-    >>> settings.add('some_value', 3, label='Some Value')
-    >>> settings.add('options', 'None', choices=['None', 'yes', 'no', 'maybe'])
+    >>> settings.add_setting('some_value', 3, label='Some Value')
+    >>> settings.add_setting('options', 'None', choices=['None', 'yes', 'no', 'maybe'])
     >>> settings.get('options')
     'None'
     >>> settings['some_value']
@@ -111,20 +111,20 @@ class SettingsGroup(object):
     def __bool__(self):
         return len(self) > 0
 
-    def add_subsettings(self, name, settings, enabled=True, nullable=False):
-        """
-        :param str      name:
-        :param SettingsGroup settings:
-        :param bool     enabled:
-        :param bool     nullable:
-        """
-        if name in self._contents:
-            raise SettingsError('Setting already exists: {!r}'.format(name))
-        self._contents[name] = SubSettings(name, settings, enabled=enabled, nullable=nullable)
+    # def add_subgroup(self, name, settings, enabled=True, nullable=False):
+    #     """
+    #     :param str      name:
+    #     :param SettingsGroup settings:
+    #     :param bool     enabled:
+    #     :param bool     nullable:
+    #     """
+    #     if name in self._contents:
+    #         raise SettingsError('Setting already exists: {!r}'.format(name))
+    #     self._contents[name] = SubSettings(name, settings, enabled=enabled, nullable=nullable)
 
-    def add(self, name, default, choices=None, data_type=None,
-            hidden=False, label=None, minmax=None, nullable=False,
-            tooltip='', widget=None, **kwargs):
+    def add_setting(self, name, default, choices=None, data_type=None,
+                    hidden=False, label=None, minmax=None, nullable=False,
+                    tooltip='', widget=None, **kwargs):
         """
         :param str          name:       Name of the setting.
         :param object       default:    Value. If None, data_type is required.
@@ -175,10 +175,10 @@ class SettingsGroup(object):
             for setting, data in settings.items():
                 # Dictionary of properties {setting_name: {...}}
                 if isinstance(data, dict):
-                    self.add(setting, **data)
+                    self.add_setting(setting, **data)
                 # Dictionary with single value {setting_name: value}
                 else:
-                    self.add(setting, data)
+                    self.add_setting(setting, data)
         elif isinstance(settings, list):
             for item in settings:
                 # List of single dicts, likely from a configuration {setting_name: {...}}
@@ -186,14 +186,14 @@ class SettingsGroup(object):
                     for setting, data in item.items():
                         # List of dicts {setting_name: {properties}}
                         if isinstance(data, dict):
-                            self.add(setting, **data)
+                            self.add_setting(setting, **data)
                         # List of dicts {setting_name: value}
                         else:
-                            self.add(setting, data)
+                            self.add_setting(setting, data)
                 # List of tuples, (setting_name, value)
                 else:
                     setting, value = item
-                    self.add(setting, value)
+                    self.add_setting(setting, value)
 
     def as_argparser(self, keys=None, hidden=False):
         """
@@ -203,8 +203,6 @@ class SettingsGroup(object):
         :param bool         hidden: If true, includes hidden keys
         :return:
         """
-        # TODO:
-        # subparsers for subsettings
         parser = argparse.ArgumentParser()
 
         for setting in self._contents.values():
@@ -247,7 +245,6 @@ class SettingsGroup(object):
 
         :rtype: bool
         """
-        # TODO: Handle subsettings
         return any(not s.property('hidden') for s in self._contents.values())
 
     def reset(self):
@@ -256,7 +253,6 @@ class SettingsGroup(object):
 
         :return:
         """
-        # TODO: Handle subsettings
         for setting in self._contents.values():
             setting.reset()
 
@@ -270,7 +266,6 @@ class SettingsGroup(object):
         :param object value:
         """
         setting = self._contents[key]
-        # TODO: handle subsettings
         setting.set(value)
 
     def setting(self, key):
