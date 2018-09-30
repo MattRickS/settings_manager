@@ -255,18 +255,22 @@ class Setting(object):
 
         # Determine data_type
         if isinstance(data_type, str):
-            # If data_type was given as a string, eg, via a configuration,
-            # get the actual type object.
-            try:
-                data_type = util.class_from_string(data_type)
-            except TypeError:
+            # If data_type was given as a string, get the actual type object.
+            cls = util.class_from_string(data_type)
+            if cls is None:
                 raise SettingsError(
-                    'Unknown data_type for setting: {!r}'.format(self._name))
+                    'Unknown string for data_type {!r} for setting: {!r}'.format(
+                        data_type, self._name))
+            data_type = cls
         if data_type is None and default is None:
             raise SettingsError('Unknown data type for setting {!r}. '
                                 'Must specify a data type or valid '
                                 'default value'.format(self._name))
         data_type = data_type or type(default)
+        if data_type == dict:
+            raise SettingsError(
+                'Unsupported data type for setting {!r}: {}'.format(
+                    self._name, data_type))
         return data_type
 
     def _validate_minmax(self, minmax):
