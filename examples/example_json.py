@@ -1,12 +1,12 @@
 import os
 import tempfile
-from settings_manager import Settings
+from settings_manager import SettingsGroup
 from settings_manager.ui import show_settings
 
 
 if __name__ == '__main__':
     # Initialise settings
-    s = Settings()
+    s = SettingsGroup()
     s.add('integer', 1)
     s.add('string1', None, data_type=str)
     s.add('float', 5.0)
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     s.to_json(json_path, values_only=False)
 
     # Read from file to a new settings object and show the new UI -- identical
-    s2 = Settings.from_json(json_path)
+    s2 = SettingsGroup.from_json(json_path)
     show_settings(s2)
 
     # Manually clean up temp path

@@ -22,19 +22,6 @@ def byteify(data):
         return data
 
 
-def required_length(lo, hi):
-    class RequiredLength(argparse.Action):
-        def __call__(self, parser, args, values, option_string=None):
-            if not lo <= len(values) <= hi:
-                msg = 'Argument {!r} requires between {} and {} arguments'.format(
-                    self.dest, lo, hi
-                )
-                raise argparse.ArgumentTypeError(msg)
-            setattr(args, self.dest, values)
-
-    return RequiredLength
-
-
 def class_from_string(string):
     """
     Attempts to resolve a class from the global scope. If the string is not
@@ -63,3 +50,27 @@ def class_from_string(string):
                 if not inspect.isclass(cls):
                     cls = None
     return cls
+
+
+def object_to_string(value):
+    # type: (object) -> str
+    """ Converts unknown objects to strings """
+    try:
+        return value.__name__  # types / classes / functions
+    except AttributeError:
+        return str(value)
+
+
+def required_length(lo, hi):
+    # type: (int|float, int|float) -> RequiredLength
+    """ Provides a range Action for argparse """
+    class RequiredLength(argparse.Action):
+        def __call__(self, parser, args, values, option_string=None):
+            if not lo <= len(values) <= hi:
+                msg = 'Argument {!r} requires between {} and {} arguments'.format(
+                    self.dest, lo, hi
+                )
+                raise argparse.ArgumentTypeError(msg)
+            setattr(args, self.dest, values)
+
+    return RequiredLength

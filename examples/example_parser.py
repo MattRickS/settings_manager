@@ -5,9 +5,9 @@ if __name__ == '__main__':
     # Initialise settings
     import sys
     sys.path.append('D:\\Programming\\settings_manager\\python')
-    from settings_manager import Settings
+    from settings_manager import SettingsGroup
 
-    s = Settings()
+    s = SettingsGroup()
     s.add('integer', 1)
     s.add('string1', None, data_type=str)
     s.add('float', 5.0)
@@ -23,4 +23,4 @@ if __name__ == '__main__':
     print(args)
     v = vars(args)
     print(v)
-    print(Settings(v))
+    print(SettingsGroup(v))

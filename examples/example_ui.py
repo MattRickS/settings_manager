@@ -1,4 +1,4 @@
-from settings_manager import Settings
+from settings_manager import SettingsGroup
 from settings_manager.ui import show_settings
 from Qt import QtCore, QtGui, QtWidgets
 
@@ -39,7 +39,7 @@ def plain_text_edit(settings, setting_name):
 
 if __name__ == '__main__':
     # Check and see -- they both work the same
-    s = Settings()
+    s = SettingsGroup()
     s.add("enable_options", True, label="Enable Options?")
     s.add("multi_line_class", 'Line 1\nLine 2', label="Multi Line Class",
           nullable=True, parent="enable_options", widget=MultiLineSettings)
