@@ -1,5 +1,7 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 
+from settings_manager.exceptions import SettingsError
+
 
 class SettingUI(object):
     """
@@ -7,6 +9,9 @@ class SettingUI(object):
     Must be initialised after the parent widget for the signal to work.
 
     To subclass:
+        Subclass onValueChanged to:
+        * Cast the UI values to python values, eg, QtCore.Qt.Checked -> True
+        * Set any valid/invalid UI state after setting internal value
         Connect the widget's normal 'valueChanged' signal to self.onValueChanged
         Implement setValue() to either call onValueChanged or emit the
         'valueChanged' signal
@@ -15,10 +20,11 @@ class SettingUI(object):
     """
     settingChanged = QtCore.Signal(object)  # Setting
 
-    def __init__(self, setting):
-        self._setting = setting
-        self._last_value = None
-        if setting:
+    def __init__(self, setting=None):
+        self._setting = None
+        self._valid = True
+
+        if setting is not None:
             self.setSetting(setting)
 
     @property
@@ -28,38 +34,57 @@ class SettingUI(object):
         """
         return self._setting
 
+    def isValid(self):
+        """
+        :rtype: bool
+        """
+        return self._valid
+
     def setSetting(self, setting):
         """
+        Sets the Setting to display. This calls setValue using the current
+        Setting value
+
         :param Setting  setting:
         """
         self._setting = setting
-
-        # Set starting value -- nullable settings would be blank if using get(),
-        # use value property directly and let it be disabled
-        value = self._setting.property('value')
-        if value:
-            self.setValue(value)
+        value = self._setting.get()
+        self.setValue(value)
 
     def setValue(self, value):
-        """ For setting the widget value should trigger onValueChanged """
-        if value is None:
-            self.setNone()
-        else:
-            self._last_value = value
+        """
+        Must be subclassed to set the UI widget and the Setting value
+
+        Note:
+            Method should take the UI value, eg, True -> QtCore.Qt.Checked
+        """
+        raise NotImplementedError
 
     def value(self):
         """ Should return UI setting value, eg, Qt.Checked """
         raise NotImplementedError
 
+    # ======================================================================== #
+    #                                   SLOTS                                  #
+    # ======================================================================== #
+
     def onValueChanged(self, value):
-        """ Sets the setting and emits the settingChanged signal """
-        self._setting.set(value)
-        self.settingChanged.emit(self._setting)
+        """
+        Sets the Setting and emits the settingChanged signal. This must be
+        connected in the subclass
 
-    def setNone(self):
-        self._setting.set(None)
-        self.setEnabled(False)
+        Note:
+            This method assumes the value is the pure python representation,
+            but the method should be subclassed to take the UI value
 
-    def restoreLastValue(self):
-        self.setValue(self._last_value)
-        self.setEnabled(True)
+        Example:
+            def onValueChanged(self, value):
+                py_value = True if value == QtCore.Qt.Checked else False
+                super(SettingUI, self).onValueChanged(py_value)
+        """
+        try:
+            self._setting.set(value)
+            self._valid = True
+            self.settingChanged.emit(self._setting)
+        except SettingsError:
+            self._valid = False
