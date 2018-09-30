@@ -61,6 +61,11 @@ class Setting(object):
         # Attempt to set the default value to validate it
         self.set(default)
 
+    def __eq__(self, other):
+        if not isinstance(other, Setting):
+            return False
+        return self.as_dict() == other.as_dict()
+
     def __str__(self):
         return self._name
 
@@ -206,6 +211,17 @@ class Setting(object):
         self._set(value)
 
     def set_property(self, name, value):
+        """
+        Sets a property value.
+
+        Warning:
+            This does not validate the current value against the new property.
+            It is advised to call Setting.set(Setting.get()) after making all
+            required modifications to ensure the current value is valid.
+
+        :param str  name:
+        :param      value:
+        """
         if name == 'choices':
             value = self._validate_choices(value)
             minmax = self._properties['minmax']
@@ -214,10 +230,6 @@ class Setting(object):
             value = self._validate_minmax(value)
             choices = self._properties['choices']
             self._validate_multi_choice(choices, value)
-        elif name == 'nullable' and not value and self._value is None:
-            # Could optionally call self._type() to set the value for them,
-            # but try to avoid auto-magic
-            raise SettingsError('Cannot disable nullable property while value is nullable')
         self._properties[name] = value
 
     def widget(self, *args, **kwargs):
@@ -274,7 +286,7 @@ class Setting(object):
         return data_type
 
     def _validate_minmax(self, minmax):
-        # type: (tuple) -> tuple[int|float]
+        # type: (tuple) -> tuple[int|float, int|float]
         # minmax must be 2 numeric values that define a numeric range,
         # or a length validation for strings.
         # If minmax is a single value, set it as both the min and max
@@ -306,7 +318,7 @@ class Setting(object):
             raise SettingsError('Multi choice lists must be strings')
         lo, hi = minmax
         num_choices = len(choices)
-        if num_choices < lo or num_choices > hi:
+        if num_choices < lo or num_choices < hi:
             raise SettingsError(
                 'Insufficient choices ({}) to meet minmax '
                 'requirement: {}'.format(num_choices, minmax)

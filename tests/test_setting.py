@@ -13,7 +13,6 @@ class TestProperties(object):
 
         Setting('key', 1, choices=[1, 2])
         Setting('key', 5.0, choices=[5.0, 10.0])
-        Setting('key', ['a', 'b'], choices=['a', 'b', 'c'], minmax=(1, 3))
         # Technically valid but useless
         Setting('key', True, choices=[True, False])
         # Nested lists (unusual - default UI will cast each item to string)
@@ -57,6 +56,20 @@ class TestProperties(object):
         # Min must be lower than Max
         with pytest.raises(SettingsError):
             Setting('key', 2, minmax=(3, 1))
+
+    def test_multi_choice(self):
+        Setting('key', ['a', 'b'], choices=['a', 'b', 'c'], minmax=(1, 3))
+        Setting('key', ['a'], choices=['a', 'b', 'c'], minmax=(1, 2))
+        Setting('key', [], choices=['a', 'b', 'c'], minmax=(0, 2))
+        # minmax range is greater than amount of choices
+        with pytest.raises(SettingsError):
+            Setting('key', ['a'], choices=['a', 'b', 'c'], minmax=(1, 5))
+        # minmax range is greater than amount of choices
+        with pytest.raises(SettingsError):
+            Setting('key', ['a'], choices=['a', 'b', 'c'], minmax=(10, 20))
+        # Default value does not meet min from minmax
+        with pytest.raises(SettingsError):
+            Setting('key', ['a'], choices=['a', 'b', 'c'], minmax=(2, 3))
 
     def test_nullable(self):
         assert Setting('key', None, data_type=int).property('nullable') is True
