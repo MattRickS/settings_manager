@@ -17,6 +17,22 @@ class SettingUI(object):
 
     def __init__(self, setting):
         self._setting = setting
+        self._last_value = None
+        if setting:
+            self.setSetting(setting)
+
+    @property
+    def setting(self):
+        """
+        :rtype: Setting
+        """
+        return self._setting
+
+    def setSetting(self, setting):
+        """
+        :param Setting  setting:
+        """
+        self._setting = setting
 
         # Set starting value -- nullable settings would be blank if using get(),
         # use value property directly and let it be disabled
@@ -24,13 +40,12 @@ class SettingUI(object):
         if value:
             self.setValue(value)
 
-    @property
-    def setting(self):
-        return self._setting
-
     def setValue(self, value):
         """ For setting the widget value should trigger onValueChanged """
-        raise NotImplementedError
+        if value is None:
+            self.setNone()
+        else:
+            self._last_value = value
 
     def value(self):
         """ Should return UI setting value, eg, Qt.Checked """
@@ -40,3 +55,11 @@ class SettingUI(object):
         """ Sets the setting and emits the settingChanged signal """
         self._setting.set(value)
         self.settingChanged.emit(self._setting)
+
+    def setNone(self):
+        self._setting.set(None)
+        self.setEnabled(False)
+
+    def restoreLastValue(self):
+        self.setValue(self._last_value)
+        self.setEnabled(True)

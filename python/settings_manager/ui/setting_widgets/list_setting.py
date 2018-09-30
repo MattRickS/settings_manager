@@ -32,11 +32,11 @@ class EnterItemDialog(QtWidgets.QDialog):
 
 
 class ListSetting(QtWidgets.QWidget, SettingUI):
-    def __init__(self, setting):
+    def __init__(self, setting, parent=None):
         """
         :param Setting setting:
         """
-        super(ListSetting, self).__init__()
+        super(ListSetting, self).__init__(parent)
         self.list_widget = QtWidgets.QListWidget()
 
         # ----- Widgets -----
@@ -77,6 +77,9 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
         self.list_widget.clear()
         self.list_widget.addItems([str(x) for x in value])
         self.onValueChanged(None)
+
+    def sizeHint(self):
+        return QtCore.QSize(285, 80)
 
     def value(self):
         # All items to text

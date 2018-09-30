@@ -2,7 +2,7 @@ from .setting_widgets import *
 from .viewer_widget import SettingsViewer
 
 
-def get_default_widget(setting):
+def get_default_widget(setting, *args, **kwargs):
     """
     Returns the default widget for a Settings object.
     Default widgets are created from Qt.py
@@ -14,19 +14,19 @@ def get_default_widget(setting):
     choices = setting.property('choices')
     minmax = setting.property('minmax')
     if choices and minmax:
-        return ListChoiceSetting(setting)
+        return ListChoiceSetting(setting, *args, **kwargs)
     elif choices:
-        return ChoiceSetting(setting)
+        return ChoiceSetting(setting, *args, **kwargs)
     elif data_type == str:
-        return StringSetting(setting)
+        return StringSetting(setting, *args, **kwargs)
     elif data_type == int:
-        return IntSetting(setting)
+        return IntSetting(setting, *args, **kwargs)
     elif data_type == float:
-        return FloatSetting(setting)
+        return FloatSetting(setting, *args, **kwargs)
     elif data_type == bool:
-        return BoolSetting(setting)
+        return BoolSetting(setting, *args, **kwargs)
     elif data_type == list:
-        return ListSetting(setting)
+        return ListSetting(setting, *args, **kwargs)
     else:
         raise TypeError('Unsupported setting UI type: {}'.format(data_type))
 

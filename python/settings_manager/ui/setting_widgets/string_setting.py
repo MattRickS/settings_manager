@@ -3,11 +3,11 @@ from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 
 
 class StringSetting(QtWidgets.QLineEdit, SettingUI):
-    def __init__(self, setting):
+    def __init__(self, setting, parent=None):
         """
         :param Setting setting:
         """
-        super(StringSetting, self).__init__()
+        super(StringSetting, self).__init__(parent)
         SettingUI.__init__(self, setting)
 
         self.textChanged.connect(self.onValueChanged)

@@ -18,6 +18,8 @@ class BoolSetting(QtWidgets.QCheckBox, SettingUI):
     # -----------------------------------------------------------------
 
     def setValue(self, value):
+        if isinstance(value, bool):
+            value = QtCore.Qt.Checked if value else QtCore.Qt.Unchecked
         self.setCheckState(value)
         self.stateChanged.emit(value)
 
