@@ -154,6 +154,10 @@ class Setting(object):
         # Accessor only
         return copy.copy(self._properties[name])
 
+    def reset(self):
+        """ Resets a setting to it's initial value """
+        self.set(self.property('default'))
+
     def set(self, value):
         """
         Sets a setting's value.
