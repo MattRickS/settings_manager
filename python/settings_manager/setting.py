@@ -91,8 +91,8 @@ class Setting(object):
 
     def as_parser_args(self):
         """
-        :rtype: dict
-        :return: Dictionary to populate ArgumentParser.add_argument
+        :rtype: tuple[str, dict]
+        :return: Tuple of (flag, arguments) to populate ArgumentParser.add_argument
         """
         default = self._properties['default']
         nullable = self._properties['nullable']
@@ -104,6 +104,11 @@ class Setting(object):
             'help': self._properties['tooltip'],
             'type': self._type,
         }
+
+        minmax = self._properties['minmax']
+        if minmax:
+            lo, hi = minmax
+            args['action'] = util.required_length(lo, hi)
 
         if self._type == bool:
             # Can't define choices/default/type for boolean
@@ -119,7 +124,6 @@ class Setting(object):
             args['action'] = action
         elif self._type == list and not nullable:
             nargs = '*'
-            minmax = self._properties['minmax']
             if minmax:
                 lo, hi = minmax
                 args['action'] = util.required_length(lo, hi)
@@ -129,14 +133,12 @@ class Setting(object):
             # type for multi value arguments refers to the sub type
             args['type'] = type(default[0]) if default else str
         # In order for an argument to accept no fields, it must use nargs='?'
-        # If an argument is then given with no value, it uses const, not default
+        # If a flag is then given with no value, it uses const, not default
         elif nullable:
             args['nargs'] = '?'
-            args['const'] = default
+            args['const'] = None
 
-        args['flag'] = flag
-
-        return args
+        return flag, args
 
     def get(self):
         """
@@ -147,8 +149,19 @@ class Setting(object):
         return copy.copy(self._value)
 
     def has_property(self, name):
-        # type: (str) -> bool
+        """
+        :param str  name:
+        :rtype: bool
+        """
         return name in self._properties
+
+    def is_modified(self):
+        """
+        Returns True if the value doesn't match the default
+
+        :rtype: bool
+        """
+        return self._properties['default'] != self._value
 
     def property(self, name):
         """

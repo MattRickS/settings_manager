@@ -70,6 +70,35 @@ class SettingsGroup(object):
     >>> settings['some_value']
     3
     """
+
+    @classmethod
+    def from_json(cls, path):
+        """
+        Reads the settings from a json file, preserving the settings order.
+
+        :param str  path:
+        :rtype: SettingsGroup
+        """
+        with open(path, 'r') as f:
+            data = json.load(f, object_pairs_hook=OrderedDict)
+
+        # Convert data from unicode to string (python 2 only)
+        if sys.version_info[0] < 3:
+            data = util.byteify(data)
+
+        def cast_from_string(data, key):
+            item = data.get(key)
+            if item is not None and isinstance(item, str):
+                data[key] = util.class_from_string(item)
+
+        # Types are converted to strings in json, evaluate them back to types
+        for setting_data in data.values():
+            if isinstance(setting_data, dict):
+                cast_from_string(setting_data, 'data_type')
+                cast_from_string(setting_data, 'widget')
+
+        return cls(data)
+
     def __init__(self, settings=None, widget=None):
         """
         :param list|dict    settings:
@@ -110,17 +139,6 @@ class SettingsGroup(object):
     # Python 3.x
     def __bool__(self):
         return len(self) > 0
-
-    # def add_subgroup(self, name, settings, enabled=True, nullable=False):
-    #     """
-    #     :param str      name:
-    #     :param SettingsGroup settings:
-    #     :param bool     enabled:
-    #     :param bool     nullable:
-    #     """
-    #     if name in self._contents:
-    #         raise SettingsError('Setting already exists: {!r}'.format(name))
-    #     self._contents[name] = SubSettings(name, settings, enabled=enabled, nullable=nullable)
 
     def add_setting(self, name, default, choices=None, data_type=None,
                     hidden=False, label=None, minmax=None, nullable=False,
@@ -168,8 +186,6 @@ class SettingsGroup(object):
                 * List of single dicts; {setting_name: value}
                 * List of tuples; (setting_name, value)
         """
-        # TODO:
-        # Subsettings
         # Recursive
         if isinstance(settings, dict):
             for setting, data in settings.items():
@@ -212,8 +228,8 @@ class SettingsGroup(object):
             elif not hidden and setting.property('hidden'):
                 continue
 
-            args = setting.as_parser_args()
-            parser.add_argument(args.pop('flag'), **args)
+            flag, args = setting.as_parser_args()
+            parser.add_argument(flag, **args)
 
         return parser
 
@@ -285,9 +301,6 @@ class SettingsGroup(object):
 
         """
         data = self.as_dict(ordered=ordered, values_only=values_only)
-        if ordered:
-            # TODO: convert to list of settings or order will be lost in json
-            pass
         return json.dumps(data, default=util.object_to_string)
 
     def widget(self, *args, **kwargs):
@@ -303,34 +316,3 @@ class SettingsGroup(object):
         # Only import UI when required
         from settings_manager.ui import SettingsViewer
         return SettingsViewer(self, *args, **kwargs)
-
-    @classmethod
-    def from_json(cls, path, scope=None):
-        """
-        Reads the settings from a json file, preserving the settings order.
-
-        WARNING: This uses eval() to retrieve callable methods / classes from
-        the data_type and widget properties. Be sure the data is safe before
-        loading.
-
-        :param str  path:
-        :param dict scope:  The scope to use when evaluating data_type and widget.
-        :rtype: SettingsGroup
-        """
-        with open(path, 'r') as f:
-            data = json.load(f, object_pairs_hook=OrderedDict)
-
-        # Convert data from unicode to string (python 2 only)
-        if sys.version_info[0] < 3:
-            data = util.byteify(data)
-
-        # Types are converted to strings in json, evaluate them back to types
-        for setting_data in data.values():
-            if isinstance(setting_data, dict):
-                setting_data['data_type'] = eval(setting_data['data_type'], scope)
-
-                widget = setting_data['widget']
-                if widget:
-                    setting_data['widget'] = eval(widget, scope)
-
-        return cls(data)

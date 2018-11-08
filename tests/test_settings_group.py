@@ -49,6 +49,8 @@ def mock_settings_config_flat_dict():
         'one': 'value',
         'two': 2,
         'three': False,
+        'four': ['a', 'b'],
+        'five': 5.0
     }
 
 
@@ -81,6 +83,22 @@ class TestSettingsGroup(object):
         # New object to avoid duplicates
         s = SettingsGroup()
         s.add_batch_settings(mock_settings_config_dict)
+
+    def test_as_argparser(self, mock_settings_config_flat_dict):
+        s = SettingsGroup(mock_settings_config_flat_dict)
+        parser = s.as_argparser()
+        args = parser.parse_args('--one other --two 5 --three'.split())
+        assert args.one == 'other'
+        assert args.two == 5
+        assert args.three is True
+        assert args.four == ['a', 'b']
+        assert args.five == 5.0
+        args = parser.parse_args('--four d e f --five 6'.split())
+        assert args.one == 'value'
+        assert args.two == 2
+        assert args.three is False
+        assert args.four == ['d', 'e', 'f']
+        assert args.five == 6.0
 
     def test_get(self, mock_settings_config_flat_dict):
         s = SettingsGroup(mock_settings_config_flat_dict)

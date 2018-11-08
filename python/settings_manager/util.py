@@ -61,6 +61,19 @@ def object_to_string(value):
         return str(value)
 
 
+def multi_choice(lo, hi, choices):
+    class MultiChoice(argparse.Action):
+        def __call__(self, parser, args, values, option_string=None):
+            if not lo <= len(values) <= hi:
+                msg = 'Argument {!r} requires between {} and {} arguments'.format(
+                    self.dest, lo, hi
+                )
+                raise argparse.ArgumentTypeError(msg)
+            setattr(args, self.dest, values)
+
+    return MultiChoice
+
+
 def required_length(lo, hi):
     # type: (int|float, int|float) -> RequiredLength
     """ Provides a range Action for argparse """
