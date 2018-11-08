@@ -66,8 +66,14 @@ class Setting(object):
             return False
         return self.as_dict() == other.as_dict()
 
+    def __repr__(self):
+        properties = self._properties.copy()
+        properties['data_type'] = self._type
+        kwargs = ['{}={!r}'.format(k, v) for k, v in sorted(properties.items())]
+        return 'Setting({!r}, {})'.format(self._name, ', '.join(kwargs))
+
     def __str__(self):
-        return self._name
+        return 'Setting({})'.format(self._name)
 
     @property
     def name(self):
@@ -249,21 +255,6 @@ class Setting(object):
             choices = self._properties['choices']
             self._validate_multi_choice(choices, value)
         self._properties[name] = value
-
-    def widget(self, *args, **kwargs):
-        """
-        Retrieves the assigned widget, or a default widget.
-        The default widget will be connected to settings.set()
-
-        :return: UI Widget object
-        """
-        widget_class = self._properties['widget']
-        if widget_class:
-            return widget_class(self, *args, **kwargs)
-
-        # Only import UI when required
-        from settings_manager.ui import get_default_widget
-        return get_default_widget(self, *args, **kwargs)
 
     def _set(self, value):
         self._value = value

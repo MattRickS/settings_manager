@@ -1,5 +1,6 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 
+from settings_manager.setting import Setting
 from settings_manager.exceptions import SettingsError
 
 
@@ -21,9 +22,9 @@ class SettingUI(object):
     settingChanged = QtCore.Signal(object)  # Setting
 
     def __init__(self, setting=None):
+        # type: (Setting) -> None
         self._setting = None
-        self._valid = True
-
+        self._ignore_value_changed = False
         if setting is not None:
             self.setSetting(setting)
 
@@ -34,12 +35,6 @@ class SettingUI(object):
         """
         return self._setting
 
-    def isValid(self):
-        """
-        :rtype: bool
-        """
-        return self._valid
-
     def setSetting(self, setting):
         """
         Sets the Setting to display. This calls setValue using the current
@@ -49,14 +44,17 @@ class SettingUI(object):
         """
         self._setting = setting
         value = self._setting.get()
+        # Disable any signals triggering while initialising the value
+        self._ignore_value_changed = True
         self.setValue(value)
+        self._ignore_value_changed = False
 
     def setValue(self, value):
         """
         Must be subclassed to set the UI widget and the Setting value
 
         Note:
-            Method should take the UI value, eg, True -> QtCore.Qt.Checked
+            Method should take the UI value, eg, QtCore.Qt.Checked -> True
         """
         raise NotImplementedError
 
@@ -82,9 +80,10 @@ class SettingUI(object):
                 py_value = True if value == QtCore.Qt.Checked else False
                 super(SettingUI, self).onValueChanged(py_value)
         """
+        if self._ignore_value_changed:
+            return
         try:
             self._setting.set(value)
-            self._valid = True
             self.settingChanged.emit(self._setting)
         except SettingsError:
-            self._valid = False
+            pass
