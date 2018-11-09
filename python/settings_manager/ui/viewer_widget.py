@@ -1,9 +1,13 @@
-from Qt import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore, QtGui
 from functools import partial
+from collections import namedtuple
+
+from settings_manager.setting import Setting
+from settings_manager.settings_group import SettingsGroup
+from settings_manager.ui.setting_widgets import create_setting_widget
 
 
-# TODO: Look at moving all widgets to a Model View system
-# EditorWidgets (persistent optional) are the SettingWidgets
+Row = namedtuple('Row', 'label widget null')
 
 
 class SettingsViewer(QtWidgets.QDialog):
@@ -22,75 +26,76 @@ class SettingsViewer(QtWidgets.QDialog):
     property of settings, and recursively enable / disable dependent setting
     widgets whenever a value is changed.
     """
+    settingChanged = QtCore.Signal(object)  # Setting
 
-    def __init__(self, settings, parent=None, prefix='', skip=None):
+    @classmethod
+    def launch(cls, settings, parent=None):
+        # type: (SettingsGroup, QtWidgets.QWidget) -> cls
         """
-        :param Settings             settings:   Settings object to build for
-        :param QtWidgets.QWidget    parent:     Parent widget
-        :param str                  prefix:     Name to prefix all setting with
-        :param list[str]            skip:       List of setting names to ignore
+        Initialises and shows the viewer. If no QApplication instance is
+        available, one is initialised.
         """
+        app = None if QtWidgets.QApplication.instance() else QtWidgets.QApplication([])
+        widget = cls(settings, parent=parent)
+        if app:
+            widget.show()
+            app.exec_()
+        else:
+            widget.exec_()
+        return widget
+
+    def __init__(self, settings=None, parent=None):
+        # type: (SettingsGroup, QtWidgets.QWidget) -> None
         super(SettingsViewer, self).__init__(parent)
-        self.prefix = prefix
-        self._settings = settings
         self._rows = {}
-        layout = self._build_default_layout(skip=skip)
+        self._settings = settings
+        layout = QtWidgets.QGridLayout()
+
+        # Stretch the widgets rather than the labels
+        layout.setColumnStretch(1, 1)
         self.setLayout(layout)
+
+        if self._settings is not None:
+            self.rebuild_layout(self._settings)
 
     @property
     def settings(self):
-        """
-        :rtype: Settings
-        """
+        # type: () -> SettingsGroup
         return self._settings
 
     def get_row(self, setting):
-        """
-        :param Setting setting:
-        :rtype: tuple(QtWidgets.QLabel, QtWidgets.QWidget, QtWidgets.QCheckbox)
-        """
+        # type: (Setting|str) -> Row
+        if isinstance(setting, Setting):
+            setting = setting.name
         return self._rows[setting]
 
-    def get_widget(self, setting):
-        """
-        Retrieves the widget for the given setting name.
+    def rebuild_layout(self, settings, skip=None):
+        # type: (SettingsGroup, list[str]) -> None
 
-        :param Setting setting:
-        :rtype: QtWidgets.QWidget
-        """
-        return self._rows[setting][1]
+        skip = skip or ()
+        layout = self.layout()
 
-    def _build_default_layout(self, skip=None):
-        """
-        Builds a default grid layout for the UI.
-
-        :rtype: QtWidgets.QGridLayout
-        """
-        skip = skip or list()
-        layout = QtWidgets.QGridLayout()
+        while self._rows:
+            name, row = self._rows.popitem()
+            for widget in row:
+                if widget:
+                    layout.removeWidget(widget)
 
         # Count instead of enumerate to avoid invalid rows when skipping
         row = 0
-        for name in self._settings:
-            setting = self._settings.setting(name)
+        for name in settings:
+            setting = settings.setting(name)
 
             # Get the widget if required
             hidden = setting.property('hidden')
             if hidden or name in skip:
                 continue
 
-            # Setup a separate label for the widget
-            label = setting.property('label')
-            label = QtWidgets.QLabel(self.prefix + label)
-
             # Get the widget defined by the setting - may be user defined
-            widget = setting.widget()
-            if setting.parent and not setting.parent.get():
-                widget.setEnabled(False)
-            widget.settingChanged.connect(
-                partial(self.onSettingChanged, setting))
+            label = QtWidgets.QLabel(setting.property('label'))
+            widget = create_setting_widget(setting)
+            widget.settingChanged.connect(self.settingChanged)
 
-            # Add to Layout
             layout.addWidget(label, row, 0, alignment=QtCore.Qt.AlignTop)
             layout.addWidget(widget, row, 1)
 
@@ -100,64 +105,78 @@ class SettingsViewer(QtWidgets.QDialog):
                 null_checkbox = QtWidgets.QCheckBox('None')
 
                 # Initial state
-                if setting.property('value') is None:
+                if setting.get() is None:
                     null_checkbox.setCheckState(QtCore.Qt.Checked)
-                    label.setEnabled(False)
-                    widget.setEnabled(False)
-                elif setting.get() is None:
-                    null_checkbox.setEnabled(False)
                     label.setEnabled(False)
                     widget.setEnabled(False)
 
                 null_checkbox.stateChanged.connect(
-                    partial(self._on_none_checkbox_checked, setting))
+                    partial(self._on_none_checkbox_checked, setting)
+                )
                 layout.addWidget(null_checkbox, row, 2)
 
-            self._rows[setting] = (label, widget, null_checkbox)
-
+            self._rows[name] = Row(label, widget, null_checkbox)
             row += 1
 
-        layout.setColumnStretch(1, 1)
-
-        return layout
+    def set_setting_hidden(self, setting, hidden):
+        # type: (Setting|str, bool) -> None
+        # Get the row and hide/show each widget
+        row = self.get_row(setting)
+        method = 'hide' if hidden else 'show'
+        for widget in row:
+            if widget:
+                getattr(widget, method)()
 
     # ======================================================================== #
     #                                  SLOTS                                   #
     # ======================================================================== #
 
     def _on_none_checkbox_checked(self, setting, state):
-        """
-        :param Setting              setting:
-        :param QtCore.Qt.ChedkState state:
-        """
-        label, widget, checkbox = self._rows[setting]
-        is_not_none = state != QtCore.Qt.Checked
+        # type:(Setting, QtCore.Qt.CheckState) -> None
+        row = self._rows[setting]
+        is_none = state == QtCore.Qt.Checked
         # The previous value is still in the disabled widget, set it back
-        value = widget.value() if is_not_none else None
+        value = None if is_none else row.widget.value()
         setting.set(value)
-        label.setEnabled(is_not_none)
-        widget.setEnabled(is_not_none)
-        self.onSettingChanged(setting)
+        row.label.setEnabled(not is_none)
+        row.widget.setEnabled(not is_none)
+        self.settingChanged.emit(setting)
 
-    def onSettingChanged(self, setting, *args, **kwargs):
-        """
-        Recursively update the enabled state of all dependent settings
 
-        :param Setting  setting:
-        """
-        value = bool(setting.get())
-        for subsetting in setting.subsettings:
-            # Setting might not be in the viewer (hidden, skipped, etc...)
-            widgets = self._rows.get(subsetting)
-            if widgets is None:
-                continue
+if __name__ == '__main__':
+    import sys
 
-            # If any ancestors are None, disable all
-            # If self is None, disable all but the None box
-            label, widget, checkbox = widgets
-            curr_value = value & (subsetting.property('value') is not None)
-            label.setEnabled(curr_value)
-            widget.setEnabled(curr_value)
-            if checkbox:
-                checkbox.setEnabled(value)
-            self.onSettingChanged(subsetting)
+    def thing(setting):
+        print('Banana', setting, setting.get())
+
+    app = QtWidgets.QApplication(sys.argv)
+    s = SettingsGroup({
+        'one': 'value',
+        'two': 3
+    })
+    widget = SettingsViewer()
+    widget.settingChanged.connect(thing)
+    widget.show()
+
+    widget.rebuild_layout(s)
+    s = SettingsGroup({
+        'three': {
+            'default': ['0', '1'],
+            'minmax': (0, 3),
+            'choices': list(map(str, range(10))),
+            'tooltip': 'This is a thing'
+        },
+        'four': False,
+        'five': {
+            'default': 1,
+            'nullable': True,
+            'minmax': (-10, 10)
+        }
+    })
+    print(s.get('three'))
+    widget.rebuild_layout(s)
+    widget.set_setting_hidden('four', True)
+    widget.set_setting_hidden('four', False)
+
+    app.exec_()
+    sys.exit()

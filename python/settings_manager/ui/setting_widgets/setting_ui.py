@@ -7,16 +7,16 @@ from settings_manager.exceptions import SettingsError
 class SettingUI(object):
     """
     Provides a common interface for settings widgets.
-    Must be initialised after the parent widget for the signal to work.
+    Must be initialised after the parent widget.
 
     To subclass:
         Subclass onValueChanged to:
         * Cast the UI values to python values, eg, QtCore.Qt.Checked -> True
-        * Set any valid/invalid UI state after setting internal value
         Connect the widget's normal 'valueChanged' signal to self.onValueChanged
-        Implement setValue() to either call onValueChanged or emit the
-        'valueChanged' signal
-        Implement value to return the widget value
+        Implement setValue() to update the widget (should trigger the signal
+        that triggers onValueChanged)
+        Implement value() to return the widget value
+        Add any setup data to setSetting() after calling the superclass method
 
     """
     settingChanged = QtCore.Signal(object)  # Setting
@@ -48,6 +48,10 @@ class SettingUI(object):
         self._ignore_value_changed = True
         self.setValue(value)
         self._ignore_value_changed = False
+
+        tooltip = self._setting.property('tooltip')
+        if tooltip:
+            self.setToolTip(tooltip)
 
     def setValue(self, value):
         """

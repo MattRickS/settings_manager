@@ -62,15 +62,21 @@ class Setting(object):
         self.set(default)
 
     def __eq__(self, other):
-        if not isinstance(other, Setting):
-            return False
-        return self.as_dict() == other.as_dict()
+        if isinstance(other, str):
+            return other == self._name
+        if isinstance(other, Setting):
+            return self.as_dict() == other.as_dict()
+        return False
+
+    def __hash__(self):
+        return hash(self._name)
 
     def __repr__(self):
         properties = self._properties.copy()
         properties['data_type'] = self._type
+        default = properties.pop('default')
         kwargs = ['{}={!r}'.format(k, v) for k, v in sorted(properties.items())]
-        return 'Setting({!r}, {})'.format(self._name, ', '.join(kwargs))
+        return 'Setting({!r}, {}, {})'.format(self._name, default, ', '.join(kwargs))
 
     def __str__(self):
         return 'Setting({})'.format(self._name)
@@ -306,10 +312,10 @@ class Setting(object):
                 'Invalid minmax value for setting {!r}: '
                 'Must be tuple of 2 numeric values.'.format(self._name))
         lo, hi = minmax
-        if lo < 0:
-            raise SettingsError(
-                'Invalid minmax range for setting {!r}: '
-                'Cannot have negative range')
+        # if lo < 0:
+        #     raise SettingsError(
+        #         'Invalid minmax range for setting {!r}: '
+        #         'Cannot have negative range')
         if hi < lo:
             raise SettingsError(
                 'Invalid minmax range for setting {!r}: '

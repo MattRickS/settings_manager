@@ -8,49 +8,6 @@ from settings_manager.setting import Setting
 from settings_manager import util
 
 
-class SubSettings(object):
-    """
-    Container for nested Settings objects.
-    """
-    def __init__(self, name, settings, enabled=True, nullable=False, widget=None):
-        # type: (str, SettingsGroup, bool) -> None
-        self._name = name
-        self._settings = settings
-        self._nullable = nullable
-        self._enabled = enabled
-        self._widget = widget
-
-    @property
-    def name(self):
-        # type: () -> str
-        return self._name
-
-    @property
-    def settings(self):
-        # type: () -> SettingsGroup
-        return self._settings
-
-    def is_enabled(self):
-        # type: () -> bool
-        return self._enabled
-
-    def is_nullable(self):
-        # type: () -> bool
-        return self._nullable
-
-    def set_enabled(self, enabled):
-        # type: (bool) -> None
-        if not self.is_nullable() and not enabled:
-            raise SettingsError('Group {!r} is not nullable'.format(self._name))
-        self._enabled = enabled
-
-    def widget(self, *args, **kwargs):
-        if self._widget is not None:
-            return self._widget(*args, **kwargs)
-
-        return self._settings.widget(*args, **kwargs)
-
-
 class SettingsGroup(object):
     """
     Convenience class for storing settings with explicit data types.
@@ -99,7 +56,7 @@ class SettingsGroup(object):
 
         return cls(data)
 
-    def __init__(self, settings=None, widget=None):
+    def __init__(self, settings=None):
         """
         :param list|dict    settings:
             Settings can be accepted in multiple forms to allow for ordering:
@@ -108,17 +65,12 @@ class SettingsGroup(object):
                 * List of single dicts; {setting_name: {properties}}
                 * List of single dicts; {setting_name: value}
                 * List of tuples; (setting_name, value)
-        :param type         widget:
         """
         self._contents = OrderedDict()
-        self._widget_cls = widget
-
         if settings is not None:
             self.add_batch_settings(settings)
 
     def __eq__(self, other):
-        if isinstance(other, SubSettings):
-            other = other.settings
         if not isinstance(other, SettingsGroup):
             return False
         return self.as_dict(ordered=True) == other.as_dict(ordered=True)
@@ -211,7 +163,7 @@ class SettingsGroup(object):
                     setting, value = item
                     self.add_setting(setting, value)
 
-    def as_argparser(self, keys=None, hidden=False):
+    def as_argparser(self, keys=None, hidden=False, **kwargs):
         """
         Create an ArgumentParser for the current settings.
 
@@ -219,7 +171,7 @@ class SettingsGroup(object):
         :param bool         hidden: If true, includes hidden keys
         :return:
         """
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser(**kwargs)
 
         for setting in self._contents.values():
             if keys:
@@ -302,17 +254,3 @@ class SettingsGroup(object):
         """
         data = self.as_dict(ordered=ordered, values_only=values_only)
         return json.dumps(data, default=util.object_to_string)
-
-    def widget(self, *args, **kwargs):
-        """
-        Retrieves the widget assigned to the settings object, or a default widget.
-        The default widget will be connected to settings.set()
-
-        :return: UI Widget object
-        """
-        if self._widget_cls is not None:
-            return self._widget_cls(self, *args, **kwargs)
-
-        # Only import UI when required
-        from settings_manager.ui import SettingsViewer
-        return SettingsViewer(self, *args, **kwargs)

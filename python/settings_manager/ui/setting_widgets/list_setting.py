@@ -157,20 +157,3 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
             index = self.list_widget.indexFromItem(item)
             self.list_widget.takeItem(index.row())
             self.list_widget.itemChanged.emit(item)
-
-
-if __name__ == '__main__':
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-
-    def thing(setting):
-        print(str(setting), setting.get())
-
-    s = Setting('key', [1, 2], minmax=(1, 3))
-    widget = ListSetting(s)
-    widget.settingChanged.connect(thing)
-    widget.show()
-    # widget.setSetting(s)
-
-    app.exec_()
-    sys.exit()

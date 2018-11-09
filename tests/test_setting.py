@@ -200,6 +200,12 @@ class TestSetting(object):
         s.reset()
         assert s.get() == value
 
+    def test_equals(self):
+        assert Setting('key', 1) == 'key'
+
+    def test_hash(self):
+        assert hash(Setting('key', 1)) == hash('key')
+
 
 def test_string_setting():
     s = Setting('key', 'value')
