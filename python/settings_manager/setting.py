@@ -44,7 +44,7 @@ class Setting(object):
             minmax = self._validate_minmax(minmax)
         # Type is forced to list by validate_data_type if minmax and choices are given
         if self._type is list and choices is not None:
-            minmax = self._validate_multi_choice(choices, minmax, default)
+            minmax = self._validate_multi_choice(choices, minmax)
         # Only validate choices separately if multi choice hasn't validated
         elif choices is not None:
             choices = self._validate_choices(choices)
@@ -332,8 +332,9 @@ class Setting(object):
             )
         return minmax
 
-    def _validate_multi_choice(self, choices, minmax, default):
-        # type: (list, tuple, object) -> tuple[int, int]
+    @staticmethod
+    def _validate_multi_choice(choices, minmax):
+        # type: (list, tuple) -> tuple[int, int]
         # Multi choice is a list of values chosen from choices. The number
         # of choices required are defined by minmax.
         # If type is list and choices are given without minmax, minmax must
@@ -363,7 +364,7 @@ class Setting(object):
         return name
 
     def _validate_subtype(self, subtype, default, choices):
-        # type: (type, object, list) -> type
+        # type: (type, object, list) -> type|None
         # Only required for list type
         if self._type is not list:
             return

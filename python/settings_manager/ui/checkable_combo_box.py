@@ -23,10 +23,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
         self._changed = False
 
     def itemChecked(self, index):
-        """
-        :param int  index:
-        :return:
-        """
+        # type: (int) -> bool
         item = self.model().item(index, self.modelColumn())
         return item.checkState() == QtCore.Qt.Checked
 
@@ -40,17 +37,12 @@ class CheckableComboBox(QtWidgets.QComboBox):
         painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, opt)
 
     def setDefaultText(self, text):
-        """
-        :param str text:
-        """
+        # type: (str) -> None
         self._default_string = text
         self._set_selection_string()
 
     def setItemChecked(self, index, checked=True):
-        """
-        :param int  index:
-        :param bool checked:
-        """
+        # type: (int, bool) -> None
         item = self.model().item(index, self.modelColumn())
         state = QtCore.Qt.Checked if checked else QtCore.Qt.Unchecked
         item.setCheckState(state)
@@ -70,9 +62,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
     # ======================================================================== #
 
     def onItemPressed(self, index):
-        """
-        :param QtCore.QModelIndex   index:
-        """
+        # type: (QtCore.Qt.QModelIndex) -> None
         item = self.model().itemFromIndex(index)
         checked = item.checkState() == QtCore.Qt.Unchecked
         self.setItemChecked(index.row(), checked=checked)
