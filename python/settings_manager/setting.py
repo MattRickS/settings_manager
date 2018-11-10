@@ -299,9 +299,11 @@ class Setting(object):
                         data_type, self._name))
             data_type = cls
         if data_type is None and default is None:
-            raise SettingsError('Unknown data type for setting {!r}. '
-                                'Must specify a data type or valid '
-                                'default value'.format(self._name))
+            if not choices:
+                raise SettingsError('Unknown data type for setting {!r}. '
+                                    'Must specify a data type or valid '
+                                    'default value'.format(self._name))
+            data_type = type(choices[0])
         data_type = data_type or type(default)
         if data_type == dict:
             raise SettingsError(

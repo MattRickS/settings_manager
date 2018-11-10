@@ -30,6 +30,7 @@ def qapplication():
     (ListSetting, {'default': ['a']}),
     (ListSetting, {'default': ['a'], 'minmax': (1, 10)}),
     # Choices
+    (ChoiceSetting, {'default': None, 'choices': ['a', 'b']}),
     (ChoiceSetting, {'default': 'a', 'choices': ['a', 'b']}),
     (ChoiceSetting, {'default': 0, 'choices': [0, 1]}),
     (ChoiceSetting, {'default': 0.0, 'choices': [0.0, 1.0]}),

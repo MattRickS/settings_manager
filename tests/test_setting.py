@@ -276,6 +276,7 @@ def test_list_setting():
     ({'default': None, 'data_type': bool}),
     # ({'default': None, 'data_type': list}),  # No known subtype
     # Choices
+    ({'default': None, 'choices': ['a', 'b', 'c']}),
     ({'default': ['a'], 'choices': ['a', 'b', 'c']}),
     ({'default': [1], 'choices': [0, 1, 2]}),
     ({'default': [1.0], 'choices': [0.0, 1.0, 2.0]}),
