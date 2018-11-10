@@ -63,6 +63,14 @@ class SettingsViewer(QtWidgets.QDialog):
         # type: () -> SettingsGroup
         return self._settings
 
+    def clear(self):
+        layout = self.layout()
+        while self._rows:
+            name, row = self._rows.popitem()
+            for widget in row:
+                if widget:
+                    layout.removeWidget(widget)
+
     def get_row(self, setting):
         # type: (Setting|str) -> Row
         if isinstance(setting, Setting):
@@ -71,15 +79,11 @@ class SettingsViewer(QtWidgets.QDialog):
 
     def rebuild_layout(self, settings, skip=None):
         # type: (SettingsGroup, list[str]) -> None
+        self.clear()
 
         skip = skip or ()
         layout = self.layout()
-
-        while self._rows:
-            name, row = self._rows.popitem()
-            for widget in row:
-                if widget:
-                    layout.removeWidget(widget)
+        self._settings = settings
 
         # Count instead of enumerate to avoid invalid rows when skipping
         row = 0
@@ -126,6 +130,15 @@ class SettingsViewer(QtWidgets.QDialog):
         for widget in row:
             if widget:
                 getattr(widget, method)()
+
+    def set_setting_none(self, setting, is_none):
+        # type: (Setting|str, bool) -> bool
+        row = self.get_row(setting)
+        if not row.null:
+            return False
+        state = QtCore.Qt.Checked if is_none else QtCore.Qt.Unchecked
+        row.null.setCheckState(state)
+        return True
 
     # ======================================================================== #
     #                                  SLOTS                                   #
@@ -177,6 +190,7 @@ if __name__ == '__main__':
     widget.rebuild_layout(s)
     widget.set_setting_hidden('four', True)
     widget.set_setting_hidden('four', False)
+    widget.set_setting_none('five', True)
 
     app.exec_()
     sys.exit()
