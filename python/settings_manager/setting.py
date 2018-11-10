@@ -7,7 +7,7 @@ from settings_manager import util
 class Setting(object):
     def __init__(self, name, default, choices=None, data_type=None,
                  hidden=False, label=None, minmax=None, nullable=False,
-                 tooltip=None, widget=None, **kwargs):
+                 subtype=None, tooltip=None, widget=None, **kwargs):
         """
         :param str        name:       Name of the setting.
         :param object     default:    Value. If None, data_type is required.
@@ -25,7 +25,9 @@ class Setting(object):
                                       minmax defines the number of choices that 
                                       can be selected.
         :param bool       nullable:   Whether or not None is a valid value.
-        :param bool       tooltip:    Description message for widget tooltip and 
+        :param type       subtype:    If datatype is list, subtype is the
+                                      content type.
+        :param bool       tooltip:    Description message for widget tooltip and
                                       parser help
         :param type       widget:     UI setting. Callable object that returns a
                                       UI widget to use for this setting. If 
@@ -34,6 +36,7 @@ class Setting(object):
         # Fixed properties
         self._name = self._validate_name(name)
         self._type = self._validate_data_type(data_type, default, choices, minmax)
+        self._subtype = self._validate_subtype(subtype, default, choices)
         self._value = None
 
         # Validate optional properties
@@ -86,6 +89,11 @@ class Setting(object):
     def name(self):
         # type: () -> str
         return self._name
+
+    @property
+    def subtype(self):
+        # type: () -> type
+        return self._subtype
 
     @property
     def type(self):
@@ -328,14 +336,9 @@ class Setting(object):
         # type: (list, tuple, object) -> tuple[int, int]
         # Multi choice is a list of values chosen from choices. The number
         # of choices required are defined by minmax.
-        # Get subtype; default could be empty or None
-        subtype = type((default or choices)[0])
         # If type is list and choices are given without minmax, minmax must
         # be the full range of choices.
         minmax = minmax or (0, len(choices))
-        if not all(isinstance(x, subtype) for x in choices):
-            raise SettingsError('Multi choice values must match choices '
-                                'and default: {}'.format(self._name))
         lo, hi = minmax
         num_choices = len(choices)
         if num_choices < lo or num_choices < hi:
@@ -358,3 +361,22 @@ class Setting(object):
                 'Use label for display names'
             )
         return name
+
+    def _validate_subtype(self, subtype, default, choices):
+        # type: (type, object, list) -> type
+        # Only required for list type
+        if self._type is not list:
+            return
+        # All possible options should be present in default and choices
+        # either of which may be None or empty.
+        options = (default or []) + (choices or [])
+        if subtype is None:
+            if not options:
+                raise SettingsError(
+                    'Unknown subtype for setting: {}'.format(self._name)
+                )
+            subtype = type(options[0]) if options else str
+        if not all(isinstance(i, subtype) for i in options):
+            raise SettingsError('Subtype does not match the given default/'
+                                'choices for setting: {}'.format(self._name))
+        return subtype

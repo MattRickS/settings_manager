@@ -94,7 +94,7 @@ class SettingsGroup(object):
 
     def add_setting(self, name, default, choices=None, data_type=None,
                     hidden=False, label=None, minmax=None, nullable=False,
-                    tooltip='', widget=None, **kwargs):
+                    subtype=None, tooltip='', widget=None, **kwargs):
         """
         :param str          name:       Name of the setting.
         :param object       default:    Value. If None, data_type is required.
@@ -112,6 +112,8 @@ class SettingsGroup(object):
                                         type, and minmax defines the number of 
                                         choices that can be selected.
         :param bool         nullable:   Whether or not None is a valid value.
+        :param type         subtype:    If datatype is list, subtype is the
+                                        content type.
         :param bool         tooltip:    Description message for widget tooltip 
                                         and parser help
         :param              widget:     UI setting. Callable object that returns 
@@ -123,7 +125,7 @@ class SettingsGroup(object):
             raise SettingsError('Setting already exists: {!r}'.format(name))
         setting = Setting(name, default, choices=choices, data_type=data_type,
                           hidden=hidden, label=label, minmax=minmax,
-                          nullable=nullable, tooltip=tooltip,
+                          nullable=nullable, subtype=subtype, tooltip=tooltip,
                           widget=widget, **kwargs)
         self._contents[name] = setting
         return setting
