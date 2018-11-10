@@ -254,3 +254,42 @@ def test_list_setting():
     s = Setting('key', ['a', 'b', 'c'])
     assert s.get() == ['a', 'b', 'c']
     assert s.type == list
+
+
+@pytest.mark.parametrize('properties', (
+    # Standard dict (truthy)
+    ({'default': 'string'}),
+    ({'default': 1}),
+    ({'default': 1.0}),
+    ({'default': True}),
+    ({'default': ['a']}),
+    # Standard dict (non-truthy)
+    ({'default': ''}),
+    ({'default': 0}),
+    ({'default': 0.0}),
+    ({'default': False}),
+    # ({'default': []}),  # No known subtype
+    # Null values with a type
+    ({'default': None, 'data_type': str}),
+    ({'default': None, 'data_type': int}),
+    ({'default': None, 'data_type': float}),
+    ({'default': None, 'data_type': bool}),
+    # ({'default': None, 'data_type': list}),  # No known subtype
+    # Choices
+    ({'default': ['a'], 'choices': ['a', 'b', 'c']}),
+    ({'default': [1], 'choices': [0, 1, 2]}),
+    ({'default': [1.0], 'choices': [0.0, 1.0, 2.0]}),
+    ({'default': [True], 'choices': [True, False]}),  # Note, terrible idea
+    # Minmax
+    ({'default': 'abc', 'minmax': (0, 3)}),
+    ({'default': 1, 'minmax': (0, 3)}),
+    ({'default': 1.0, 'minmax': (0, 3)}),
+    ({'default': ['a'], 'minmax': (0, 3)}),
+    # MultiChoice
+    ({'default': 'abc', 'minmax': (1, 3)}),
+    ({'default': 1, 'minmax': (1, 3)}),
+    ({'default': 1.0, 'minmax': (1, 3)}),
+    ({'default': ['a'], 'minmax': (1, 3)}),
+))
+def test_create_setting(properties):
+    Setting('key', **properties)
