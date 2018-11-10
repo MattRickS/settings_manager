@@ -1,6 +1,7 @@
-from PySide2 import QtWidgets, QtCore, QtGui
 from functools import partial
 from collections import namedtuple
+
+from PySide2 import QtWidgets, QtCore, QtGui
 
 from settings_manager.setting import Setting
 from settings_manager.settings_group import SettingsGroup
@@ -77,22 +78,20 @@ class SettingsViewer(QtWidgets.QDialog):
             setting = setting.name
         return self._rows[setting]
 
-    def rebuild_layout(self, settings, skip=None):
+    def rebuild_layout(self, settings, build_settings=None):
         # type: (SettingsGroup, list[str]) -> None
+        """ Builds the widgets for the settings, optionally only using build_settings """
         self.clear()
 
-        skip = skip or ()
+        build_settings = build_settings or tuple(settings)
         layout = self.layout()
         self._settings = settings
 
         # Count instead of enumerate to avoid invalid rows when skipping
         row = 0
-        for name in settings:
+        for name in build_settings:
             setting = settings.setting(name)
-
-            # Get the widget if required
-            hidden = setting.property('hidden')
-            if hidden or name in skip:
+            if setting.property('hidden'):
                 continue
 
             # Get the widget defined by the setting - may be user defined
@@ -148,11 +147,8 @@ class SettingsViewer(QtWidgets.QDialog):
         # type:(Setting, QtCore.Qt.CheckState) -> None
         row = self._rows[setting]
         is_none = state == QtCore.Qt.Checked
-        # The previous value is still in the disabled widget, set it back
-        value = None if is_none else row.widget.value()
-        setting.set(value)
+        row.widget.setNone(is_none)
         row.label.setEnabled(not is_none)
-        row.widget.setEnabled(not is_none)
         self.settingChanged.emit(setting)
 
 
@@ -174,9 +170,12 @@ if __name__ == '__main__':
     widget.rebuild_layout(s)
     s = SettingsGroup({
         'three': {
+            # 'default': 1,
+            # 'choices': [0, 1, 2],
             'default': ['0', '1'],
+            'choices': ['0', '1', '2', '3'],
+            # 'choices': [['0', '1'], ['0', '1', '2'], ['0'], ['', 'a']],
             'minmax': (0, 3),
-            'choices': list(map(str, range(10))),
             'tooltip': 'This is a thing'
         },
         'four': False,
@@ -186,7 +185,6 @@ if __name__ == '__main__':
             'minmax': (-10, 10)
         }
     })
-    print(s.get('three'))
     widget.rebuild_layout(s)
     widget.set_setting_hidden('four', True)
     widget.set_setting_hidden('four', False)

@@ -11,10 +11,6 @@ class BoolSetting(QtWidgets.QCheckBox, SettingUI):
         SettingUI.__init__(self, setting)
         self.stateChanged.connect(self.onValueChanged)
 
-    # -----------------------------------------------------------------
-    #                              SLOTS
-    # -----------------------------------------------------------------
-
     def setValue(self, value):
         # type: (QtCore.Qt.CheckState|bool) -> None
         if isinstance(value, bool):

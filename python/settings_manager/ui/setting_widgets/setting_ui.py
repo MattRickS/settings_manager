@@ -35,6 +35,17 @@ class SettingUI(object):
         """
         return self._setting
 
+    def setNone(self, is_none):
+        # type: (bool) -> bool
+        """ Attempts to set the value as none, disabling the widget """
+        if not self._setting.property('nullable'):
+            return False
+        # The previous value is still in the disabled widget, set it back
+        value = None if is_none else self.value()
+        self._setting.set(value)
+        self.setEnabled(not is_none)
+        return True
+
     def setSetting(self, setting):
         """
         Sets the Setting to display. This calls setValue using the current
@@ -46,7 +57,7 @@ class SettingUI(object):
         value = self._setting.get()
         # Disable any signals triggering while initialising the value
         self._ignore_value_changed = True
-        self.setValue(value)
+        self.setNone(True) if value is None else self.setValue(value)
         self._ignore_value_changed = False
 
         tooltip = self._setting.property('tooltip')
@@ -60,11 +71,11 @@ class SettingUI(object):
         Note:
             Method should take the UI value, eg, QtCore.Qt.Checked -> True
         """
-        raise NotImplementedError
+        raise NotImplementedError('setValue')
 
     def value(self):
         """ Should return UI setting value, eg, Qt.Checked """
-        raise NotImplementedError
+        raise NotImplementedError('value')
 
     # ======================================================================== #
     #                                   SLOTS                                  #

@@ -15,6 +15,8 @@ def create_setting_widget(setting, parent=None):
     # type: (Setting, QtWidgets.QWidget) -> SettingUI|QtWidgets.QWidget
     """ Initialises the setting widget or a default widget """
     cls = setting.property('widget') or get_default_setting_widget(setting)
+    if cls is None:
+        raise ValueError('No widget defined for setting: {}'.format(setting))
     return cls(setting, parent=parent)
 
 
@@ -43,5 +45,3 @@ def get_default_setting_widget(setting):
         return BoolSetting
     elif data_type == list:
         return ListSetting
-    else:
-        raise TypeError('Unsupported setting UI type: {}'.format(data_type))

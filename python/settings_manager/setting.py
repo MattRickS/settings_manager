@@ -39,8 +39,9 @@ class Setting(object):
         # Validate optional properties
         if minmax is not None:
             minmax = self._validate_minmax(minmax)
-        if minmax is not None and choices is not None:
-            self._validate_multi_choice(choices, minmax)
+        # Type is forced to list by validate_data_type if minmax and choices are given
+        if self._type is list and choices is not None:
+            minmax = self._validate_multi_choice(choices, minmax, default)
         # Only validate choices separately if multi choice hasn't validated
         elif choices is not None:
             choices = self._validate_choices(choices)
@@ -307,15 +308,15 @@ class Setting(object):
         # If minmax is a single value, set it as both the min and max
         # This is only really relevant for a fixed string length
         minmax = minmax if hasattr(minmax, '__iter__') else (minmax, minmax)
-        if not len(minmax) == 2 and not all(isinstance(i, (int, float)) for i in minmax):
+        if not len(minmax) == 2 and not all(isinstance(i, int) for i in minmax):
             raise SettingsError(
                 'Invalid minmax value for setting {!r}: '
                 'Must be tuple of 2 numeric values.'.format(self._name))
         lo, hi = minmax
-        # if lo < 0:
-        #     raise SettingsError(
-        #         'Invalid minmax range for setting {!r}: '
-        #         'Cannot have negative range')
+        if self._type in (list, str) and lo < 0:
+            raise SettingsError(
+                'Invalid minmax range for setting {!r}: Cannot '
+                'have negative range for types (list, str)'.format(self._name))
         if hi < lo:
             raise SettingsError(
                 'Invalid minmax range for setting {!r}: '
@@ -323,14 +324,18 @@ class Setting(object):
             )
         return minmax
 
-    @staticmethod
-    def _validate_multi_choice(choices, minmax):
-        # type: (list, tuple) -> None
+    def _validate_multi_choice(self, choices, minmax, default):
+        # type: (list, tuple, object) -> tuple[int, int]
         # Multi choice is a list of values chosen from choices. The number
-        # of choices required are defined by minmax. Only string values are
-        # currently supported.
-        if not all(isinstance(x, str) for x in choices):
-            raise SettingsError('Multi choice lists must be strings')
+        # of choices required are defined by minmax.
+        # Get subtype; default could be empty or None
+        subtype = type((default or choices)[0])
+        # If type is list and choices are given without minmax, minmax must
+        # be the full range of choices.
+        minmax = minmax or (0, len(choices))
+        if not all(isinstance(x, subtype) for x in choices):
+            raise SettingsError('Multi choice values must match choices '
+                                'and default: {}'.format(self._name))
         lo, hi = minmax
         num_choices = len(choices)
         if num_choices < lo or num_choices < hi:
@@ -338,6 +343,8 @@ class Setting(object):
                 'Insufficient choices ({}) to meet minmax '
                 'requirement: {}'.format(num_choices, minmax)
             )
+
+        return minmax
 
     @staticmethod
     def _validate_name(name):

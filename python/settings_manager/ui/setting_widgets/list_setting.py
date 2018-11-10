@@ -53,7 +53,6 @@ class ListSetting(QtWidgets.QWidget, SettingUI):
         self.sub_btn = QtWidgets.QPushButton('-')
         self.sub_btn.setFixedWidth(self.sub_btn.sizeHint().height())
         self.sub_btn.setEnabled(False)
-        # TODO: Add check for choices when adding/editing
 
         # ----- Layout -----
 

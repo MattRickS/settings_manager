@@ -20,8 +20,16 @@ class ChoiceSetting(QtWidgets.QComboBox, SettingUI):
 
     def setValue(self, value):
         # type: (str) -> None
-        self.setCurrentText(value)
+        # setCurrentText is qt5 only
+        idx = self._setting.property('choices').index(value)
+        self.setCurrentIndex(idx)
 
     def value(self):
         # type: () -> str
-        return self.currentText()
+        idx = self.currentIndex()
+        choice = self._setting.property('choices')[idx]
+        return self.setting.type(choice)
+
+    def onValueChanged(self, value):
+        # Use the value which preserves the choice's type
+        super(ChoiceSetting, self).onValueChanged(self.value())
