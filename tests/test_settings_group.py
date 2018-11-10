@@ -73,7 +73,7 @@ class TestSettingsGroup(object):
 
     def test_add_batch_settings(self, mock_settings_config_list, mock_settings_config_dict):
         s = SettingsGroup()
-        s.add_batch_settings(mock_settings_config_list)
+        s.update(mock_settings_config_list)
         # Ensure ordered
         keys = list(s)
         for idx, i in enumerate(mock_settings_config_list):
@@ -82,7 +82,7 @@ class TestSettingsGroup(object):
 
         # New object to avoid duplicates
         s = SettingsGroup()
-        s.add_batch_settings(mock_settings_config_dict)
+        s.update(mock_settings_config_dict)
 
     @pytest.mark.parametrize('string, values', (
         ('--one other --two 5 --three', {'one': 'other',
