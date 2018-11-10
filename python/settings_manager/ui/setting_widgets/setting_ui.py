@@ -24,7 +24,6 @@ class SettingUI(object):
     def __init__(self, setting=None):
         # type: (Setting) -> None
         self._setting = None
-        self._ignore_value_changed = False
         if setting is not None:
             self.setSetting(setting)
 
@@ -55,10 +54,7 @@ class SettingUI(object):
         """
         self._setting = setting
         value = self._setting.get()
-        # Disable any signals triggering while initialising the value
-        self._ignore_value_changed = True
         self.setNone(True) if value is None else self.setValue(value)
-        self._ignore_value_changed = False
 
         tooltip = self._setting.property('tooltip')
         if tooltip:
@@ -95,10 +91,8 @@ class SettingUI(object):
                 py_value = True if value == QtCore.Qt.Checked else False
                 super(SettingUI, self).onValueChanged(py_value)
         """
-        if self._ignore_value_changed:
+        # Only trigger when the value actually changes
+        if self._setting.get() == value:
             return
-        try:
-            self._setting.set(value)
-            self.settingChanged.emit(self._setting)
-        except SettingsError:
-            pass
+        self._setting.set(value)
+        self.settingChanged.emit(self._setting)
