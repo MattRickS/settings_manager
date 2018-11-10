@@ -120,11 +120,17 @@ class Setting(object):
         flag = '--' + self._name
 
         args = {
-            'choices': self._properties['choices'],
             'default': default,
-            'help': self._properties['tooltip'],
             'type': self._type,
         }
+
+        tooltip = self._properties['tooltip']
+        if tooltip:
+            args['help'] = tooltip
+
+        choices = self._properties['choices']
+        if choices:
+            args['choices'] = choices
 
         minmax = self._properties['minmax']
         if minmax:
@@ -133,7 +139,7 @@ class Setting(object):
 
         if self._type == bool:
             # Can't define choices/default/type for boolean
-            args.pop('choices')
+            args.pop('choices', None)
             args.pop('default')
             args.pop('type')
             if default:
@@ -151,8 +157,7 @@ class Setting(object):
                 if lo > 0:
                     nargs = '+'
             args['nargs'] = nargs
-            # type for multi value arguments refers to the sub type
-            args['type'] = type(default[0]) if default else str
+            args['type'] = self.subtype
         # In order for an argument to accept no fields, it must use nargs='?'
         # If a flag is then given with no value, it uses const, not default
         elif nullable:
@@ -317,8 +322,8 @@ class Setting(object):
         # or a length validation for strings.
         # If minmax is a single value, set it as both the min and max
         # This is only really relevant for a fixed string length
-        minmax = minmax if hasattr(minmax, '__iter__') else (minmax, minmax)
-        if not len(minmax) == 2 and not all(isinstance(i, int) for i in minmax):
+        minmax = tuple(minmax) if hasattr(minmax, '__iter__') else (minmax, minmax)
+        if len(minmax) != 2 or any(not isinstance(i, int) for i in minmax):
             raise SettingsError(
                 'Invalid minmax value for setting {!r}: '
                 'Must be tuple of 2 numeric values.'.format(self._name))

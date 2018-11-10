@@ -41,14 +41,14 @@ class TestProperties(object):
         assert Setting('custom_key', 0).property('label') == 'custom key'
         assert Setting('key', 0, label='Label').property('label') == 'Label'
 
-    @pytest.mark.parametrize('value, minmax, expected, valid, invalid', (
-        (1, (1, 10), (1, 10), (1, 2, 3), (-1, 0, 11)),
-        (1.0, (1.0, 10.0), (1.0, 10.0), (1.0, 2.0, 3.0), (-1.0, 0.0, 11.0)),
-        (10, 10, (10, 10), (10, ), (9, 11)),
+    @pytest.mark.parametrize('value, minmax, valid, invalid', (
+        (1, (-10, 10), (-5, 2, 10), (-11, 11)),
+        (1.0, (1, 10), (1.0, 2.0, 3.0), (-1.0, 0.0, 11.0)),
+        (10, 10, (10, ), (9, 11)),
+        ('abc', (2, 4), ('ab', 'abcd'), ('a', 'abcde')),
     ))
-    def test_minmax(self, value, minmax, expected, valid, invalid):
+    def test_minmax(self, value, minmax, valid, invalid):
         s = Setting('key', value, minmax=minmax)
-        assert s.property('minmax') == expected
         for i in valid:
             s.set(i)
         for i in invalid:
@@ -86,62 +86,7 @@ class TestProperties(object):
             Setting('key', None)
 
 
-def _get_single_arg_parser(name, value, **setting_kwargs):
-    s = Setting(name, value, **setting_kwargs)
-    flag, args = s.as_parser_args()
-    parser = argparse.ArgumentParser()
-    parser.add_argument(flag, **args)
-    return parser
-
-
 class TestSetting(object):
-    @pytest.mark.parametrize('value, alt_string, alt_result', (
-            ('value', 'other', 'other'),
-            (1, '3', 3),
-            (3.0, '5.0', 5.0),
-            (['a', 'b'], 'c d', ['c', 'd']),
-            ([1, 2], '3 4', [3, 4]),
-            (False, '', True),  # See test_as_parser_args__bool for inverse
-    ))
-    def test_as_parser_args__basic(self, value, alt_string, alt_result):
-        parser = _get_single_arg_parser('key', value)
-
-        # Default value
-        parsed = parser.parse_args([])
-        assert getattr(parsed, 'key') == value
-
-        # Given value
-        parsed = parser.parse_args(('--key ' + alt_string).split())
-        assert getattr(parsed, 'key') == alt_result
-
-        # Nullable const value
-        parser = _get_single_arg_parser('key', value, nullable=True)
-        parsed = parser.parse_args(['--key'])
-        # For boolean actions, const is set to the value to store, eg
-        # for value=False, we get action='store_true' which results in const=True
-        value = not value if isinstance(value, bool) else None
-        assert getattr(parsed, 'key') is value
-
-    def test_as_parser_args__bool(self):
-        # Because the action becomes 'store_false', we modify the flag name
-        # to prepend '--no-', requiring separate testing from parametrize
-        parser = _get_single_arg_parser('key', True)
-        # Default value
-        parsed = parser.parse_args([])
-        assert getattr(parsed, 'key') is True
-        # Given value
-        parsed = parser.parse_args(['--no-key'])
-        assert getattr(parsed, 'key') is False
-
-    def test_as_parser_args__multi_choice(self):
-        parser = _get_single_arg_parser('key', ['a', 'b'], choices=['a', 'b', 'c', 'd'], minmax=2)
-        # Default value
-        parsed = parser.parse_args([])
-        assert getattr(parsed, 'key') == ['a', 'b']
-        # Given value
-        parsed = parser.parse_args('--key c d'.split())
-        assert getattr(parsed, 'key') == ['c', 'd']
-
     @pytest.mark.parametrize('value, alt_value', (
             ('a', 'b'),
             (1, 2),
@@ -207,55 +152,6 @@ class TestSetting(object):
         assert hash(Setting('key', 1)) == hash('key')
 
 
-def test_string_setting():
-    s = Setting('key', 'value')
-    assert s.get() == 'value'
-    assert s.type == str
-    # Invalid type
-    with pytest.raises(SettingsError):
-        assert Setting('key', 'value', data_type=int)
-
-    # Property combinations
-    assert Setting('key', 'value', minmax=5)
-    assert Setting('key', 'value', choices=['value'])
-    assert Setting('key', 'value', choices=['value', 'other'])
-    # Length of default is wrong
-    with pytest.raises(SettingsError):
-        Setting('key', 'value', minmax=3)
-
-
-def test_int_setting():
-    s = Setting('key', 1)
-    assert s.get() == 1
-    assert s.type == int
-    assert Setting('key', 1, minmax=(0, 5))
-    # Out of range
-    with pytest.raises(SettingsError):
-        Setting('key', 8, minmax=(0, 5))
-
-
-def test_float_setting():
-    s = Setting('key', 1.0)
-    assert s.get() == 1.0
-    assert s.type == float
-    assert Setting('key', 1.0, minmax=(0, 5))
-    # Out of range
-    with pytest.raises(SettingsError):
-        Setting('key', 8.0, minmax=(0, 5))
-
-
-def test_bool_setting():
-    s = Setting('key', True)
-    assert s.get() is True
-    assert s.type == bool
-
-
-def test_list_setting():
-    s = Setting('key', ['a', 'b', 'c'])
-    assert s.get() == ['a', 'b', 'c']
-    assert s.type == list
-
-
 @pytest.mark.parametrize('properties', (
     # Standard dict (truthy)
     ({'default': 'string'}),
@@ -268,13 +164,13 @@ def test_list_setting():
     ({'default': 0}),
     ({'default': 0.0}),
     ({'default': False}),
-    # ({'default': []}),  # No known subtype
+    ({'default': [], 'subtype': int}),
     # Null values with a type
     ({'default': None, 'data_type': str}),
     ({'default': None, 'data_type': int}),
     ({'default': None, 'data_type': float}),
     ({'default': None, 'data_type': bool}),
-    # ({'default': None, 'data_type': list}),  # No known subtype
+    ({'default': None, 'data_type': list, 'subtype': str}),
     # Choices
     ({'default': None, 'choices': ['a', 'b', 'c']}),
     ({'default': ['a'], 'choices': ['a', 'b', 'c']}),
@@ -294,3 +190,57 @@ def test_list_setting():
 ))
 def test_create_setting(properties):
     Setting('key', **properties)
+
+
+@pytest.mark.parametrize('properties', (
+    ({'default': 11, 'minmax': (5, 10)}),     # Value greater than maximum
+    ({'default': 4, 'minmax': (5, 10)}),      # Value lower than minimum
+    ({'default': 4, 'data_type': str}),       # Invalid datatype
+    ({'default': ['a'], 'choices': [0, 1]}),  # Invalid datatype
+    ({'default': None, 'data_type': dict}),   # Invalid datatype
+    ({'default': None}),                      # No data type
+    ({'default': 2, 'choices': [0, 1]}),      # Default not in choices
+    ({'default': 2, 'minmax': (0.0, 5.0)}),   # minmax must be int
+))
+def test_create_setting_error(properties):
+    with pytest.raises(SettingsError):
+        Setting('key', **properties)
+
+
+@pytest.mark.parametrize('name, properties, input_string, parsed', (
+    # Standard data types (provided)
+    ('key', {'default': 'a'}, '--key b', 'b'),
+    ('key', {'default': True}, '--no-key', False),
+    ('key', {'default': 1}, '--key 2', 2),
+    ('key', {'default': 1.0}, '--key 2', 2.0),
+    ('key', {'default': [], 'subtype': str}, '--key a b', ['a', 'b']),
+    # Standard data types (default)
+    ('key', {'default': 'a'}, '', 'a'),
+    ('key', {'default': True}, '', True),
+    ('key', {'default': 1}, '', 1),
+    ('key', {'default': 1.0}, '', 1.0),
+    ('key', {'default': [], 'subtype': str}, '', []),
+    # Nullable settings
+    ('key', {'default': None, 'data_type': str}, '', None),
+    ('key', {'default': None, 'data_type': str}, '--key', None),
+    ('key', {'default': 'a', 'nullable': True}, '', 'a'),
+    ('key', {'default': 'a', 'nullable': True}, '--key', None),
+    # Choices
+    ('key', {'default': 'a', 'choices': 'a b c'.split()}, '', 'a'),
+    ('key', {'default': 'a', 'choices': 'a b c'.split()}, '--key b', 'b'),
+    ('key', {'default': [], 'choices': 'a b c'.split()}, '--key b', ['b']),
+    ('key', {'default': [], 'choices': 'a b c'.split()}, '', []),
+    # Choices and minmax
+    ('key', {'default': ['a'], 'choices': 'a b c'.split(), 'minmax': (1, 3)}, '', ['a']),
+    ('key', {'default': [1], 'choices': [0, 1, 2], 'minmax': (1, 3)}, '--key 1 2', [1, 2]),
+    # Choices and nullable
+    ('key', {'default': None, 'choices': 'a b c'.split()}, '--key', None),
+    ('key', {'default': None, 'choices': 'a b c'.split()}, '--key b', 'b'),
+))
+def test_argparse(name, properties, input_string, parsed):
+    s = Setting(name, **properties)
+    flag, args = s.as_parser_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(flag, **args)
+    p_args = parser.parse_args(input_string.split())
+    assert getattr(p_args, name) == parsed
