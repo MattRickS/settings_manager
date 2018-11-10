@@ -50,9 +50,9 @@ class SettingsViewer(QtWidgets.QDialog):
         super(SettingsViewer, self).__init__(parent)
         self._rows = {}
         self._settings = settings
-        layout = QtWidgets.QGridLayout()
 
         # Stretch the widgets rather than the labels
+        layout = QtWidgets.QGridLayout()
         layout.setColumnStretch(1, 1)
         self.setLayout(layout)
 
@@ -96,8 +96,9 @@ class SettingsViewer(QtWidgets.QDialog):
 
             # Get the widget defined by the setting - may be user defined
             label = QtWidgets.QLabel(setting.property('label'))
+            label.setToolTip(setting.property('tooltip'))
             widget = create_setting_widget(setting)
-            widget.settingChanged.connect(self.settingChanged)
+            widget.settingChanged.connect(self._on_setting_changed)
 
             layout.addWidget(label, row, 0, alignment=QtCore.Qt.AlignTop)
             layout.addWidget(widget, row, 1)
@@ -110,7 +111,6 @@ class SettingsViewer(QtWidgets.QDialog):
                 # Initial state
                 if setting.get() is None:
                     null_checkbox.setCheckState(QtCore.Qt.Checked)
-                    label.setEnabled(False)
                     widget.setEnabled(False)
 
                 null_checkbox.stateChanged.connect(
@@ -120,6 +120,14 @@ class SettingsViewer(QtWidgets.QDialog):
 
             self._rows[name] = Row(label, widget, null_checkbox)
             row += 1
+
+    def set_setting_modified(self, setting, modified):
+        # type: (Setting, bool) -> None
+        """ Updates the row to appear different when modified from default """
+        row = self.get_row(setting)
+        font = row.label.font()
+        font.setBold(modified)
+        row.label.setFont(font)
 
     def set_setting_hidden(self, setting, hidden):
         # type: (Setting|str, bool) -> None
@@ -148,5 +156,9 @@ class SettingsViewer(QtWidgets.QDialog):
         row = self._rows[setting]
         is_none = state == QtCore.Qt.Checked
         row.widget.setNone(is_none)
-        row.label.setEnabled(not is_none)
+        self._on_setting_changed(setting)
+
+    def _on_setting_changed(self, setting):
+        # type: (Setting) -> None
+        self.set_setting_modified(setting, setting.is_modified())
         self.settingChanged.emit(setting)
