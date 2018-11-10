@@ -2,6 +2,8 @@ from PySide2 import QtCore, QtGui, QtWidgets
 import pytest
 
 from settings_manager.setting import Setting
+from settings_manager.settings_group import SettingsGroup
+from settings_manager.ui.settings_viewer import SettingsViewer
 from settings_manager.ui.setting_widgets import (StringSetting,
                                                  BoolSetting,
                                                  IntSetting,
@@ -43,3 +45,24 @@ def test_create_widget(qapplication, klass, properties):
     assert widget_class == klass
     widget = klass(s)
     widget.show()
+
+
+def test_settings_viewer(qapplication):
+    s = SettingsGroup({
+        'one': 'abc',
+        'two': 1,
+        'three': 1.0,
+        'four': {
+            'default': None,
+            'data_type': str
+        },
+        'five': {
+            'default': ['1'],
+            'nullable': True
+        },
+    })
+    widget = SettingsViewer(s)
+    widget.show()
+    widget.set_setting_none('four', False)
+    widget.set_setting_none('five', True)
+    widget.set_setting_hidden('one', True)
