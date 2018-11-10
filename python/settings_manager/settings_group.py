@@ -58,7 +58,7 @@ class SettingsGroup(object):
 
     def __init__(self, settings=None):
         """
-        :param list|dict    settings:
+        :param list|dict|SettingsGroup    settings:
             Settings can be accepted in multiple forms to allow for ordering:
                 * Dictionary of properties; {setting_name: {properties}}
                 * Dictionary with single value; {setting_name: value}
@@ -68,7 +68,7 @@ class SettingsGroup(object):
         """
         self._contents = OrderedDict()
         if settings is not None:
-            self.add_batch_settings(settings)
+            self.update(settings)
 
     def __eq__(self, other):
         if not isinstance(other, SettingsGroup):
@@ -129,41 +129,6 @@ class SettingsGroup(object):
                           widget=widget, **kwargs)
         self._contents[name] = setting
         return setting
-
-    def add_batch_settings(self, settings):
-        """
-        :param list|dict    settings:
-            Settings can be accepted in multiple forms to allow for ordering:
-                * Dictionary of properties; {setting_name: {properties}}
-                * Dictionary with single value; {setting_name: value}
-                * List of single dicts; {setting_name: {properties}}
-                * List of single dicts; {setting_name: value}
-                * List of tuples; (setting_name, value)
-        """
-        # Recursive
-        if isinstance(settings, dict):
-            for setting, data in settings.items():
-                # Dictionary of properties {setting_name: {...}}
-                if isinstance(data, dict):
-                    self.add_setting(setting, **data)
-                # Dictionary with single value {setting_name: value}
-                else:
-                    self.add_setting(setting, data)
-        elif isinstance(settings, list):
-            for item in settings:
-                # List of single dicts, likely from a configuration {setting_name: {...}}
-                if isinstance(item, dict):
-                    for setting, data in item.items():
-                        # List of dicts {setting_name: {properties}}
-                        if isinstance(data, dict):
-                            self.add_setting(setting, **data)
-                        # List of dicts {setting_name: value}
-                        else:
-                            self.add_setting(setting, data)
-                # List of tuples, (setting_name, value)
-                else:
-                    setting, value = item
-                    self.add_setting(setting, value)
 
     def as_argparser(self, keys=None, hidden=False, **kwargs):
         """
@@ -256,3 +221,40 @@ class SettingsGroup(object):
         """
         data = self.as_dict(ordered=ordered, values_only=values_only)
         return json.dumps(data, default=util.object_to_string)
+
+    def update(self, settings):
+        """
+        :param list|dict|SettingsGroup    settings:
+            Settings can be accepted in multiple forms to allow for ordering:
+                * SettingsGroup
+                * Dictionary of properties; {setting_name: {properties}}
+                * Dictionary with single value; {setting_name: value}
+                * List of single dicts; {setting_name: {properties}}
+                * List of single dicts; {setting_name: value}
+                * List of tuples; (setting_name, value)
+        """
+        if isinstance(settings, SettingsGroup):
+            settings = settings.as_dict(ordered=True)
+        if isinstance(settings, dict):
+            for setting, data in settings.items():
+                # Dictionary of properties {setting_name: {...}}
+                if isinstance(data, dict):
+                    self.add_setting(setting, **data)
+                # Dictionary with single value {setting_name: value}
+                else:
+                    self.add_setting(setting, data)
+        elif isinstance(settings, list):
+            for item in settings:
+                # List of single dicts, likely from a configuration {setting_name: {...}}
+                if isinstance(item, dict):
+                    for setting, data in item.items():
+                        # List of dicts {setting_name: {properties}}
+                        if isinstance(data, dict):
+                            self.add_setting(setting, **data)
+                        # List of dicts {setting_name: value}
+                        else:
+                            self.add_setting(setting, data)
+                # List of tuples, (setting_name, value)
+                else:
+                    setting, value = item
+                    self.add_setting(setting, value)
