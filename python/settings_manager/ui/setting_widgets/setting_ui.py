@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtGui, QtWidgets
+from Qt import QtCore, QtGui, QtWidgets
 
 from settings_manager.setting import Setting
 

@@ -1,7 +1,7 @@
 from functools import partial
 from collections import namedtuple
 
-from PySide2 import QtWidgets, QtCore, QtGui
+from Qt import QtWidgets, QtCore, QtGui
 
 from settings_manager.setting import Setting
 from settings_manager.settings_group import SettingsGroup
