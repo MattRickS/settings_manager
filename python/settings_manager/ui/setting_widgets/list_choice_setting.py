@@ -18,7 +18,7 @@ class ListChoiceSetting(CheckableComboBox, SettingUI):
         # Load choices
         choices = setting.property('choices')
         current_values = setting.get()
-        self.addItems(choices)
+        self.addItems(list(map(str, choices)))
         for idx, value in enumerate(choices):
             self.setItemChecked(idx, value in current_values)
 
@@ -30,14 +30,15 @@ class ListChoiceSetting(CheckableComboBox, SettingUI):
         # type: (str|list[str]) -> None
         if not isinstance(value, list):
             value = [value]
+        value = list(map(str, value))
         for row in range(self.model().rowCount()):
             self.setItemChecked(row, self.itemText(row) in value)
         self.itemStateChanged.emit(None)
-        # self.onValueChanged(value)
 
     def value(self):
         # type: () -> list[str]
-        return [i.data(QtCore.Qt.DisplayRole) for i in self.checkedItems()]
+        return [self._setting.subtype(i.data(QtCore.Qt.DisplayRole))
+                for i in self.checkedItems()]
 
     def onItemPressed(self, index):
         # type: (QtCore.QModelIndex) -> None
@@ -53,5 +54,5 @@ class ListChoiceSetting(CheckableComboBox, SettingUI):
 
     def onValueChanged(self, value):
         # type: (QtGui.QStandardItem) -> None
-        items = [i.data(QtCore.Qt.DisplayRole) for i in self.checkedItems()]
-        super(ListChoiceSetting, self).onValueChanged(items)
+        # Use the value which preserves the choice's type
+        super(ListChoiceSetting, self).onValueChanged(self.value())
