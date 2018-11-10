@@ -1,7 +1,6 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from settings_manager.setting import Setting
-from settings_manager.exceptions import SettingsError
 
 
 class SettingUI(object):

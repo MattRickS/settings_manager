@@ -5,11 +5,11 @@ from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 
 
 class LengthValidator(QtGui.QValidator):
-    def __init__(self, minmax, parent=None):
-        # type: (tuple[int, int], QtWidgets.QWidget) -> None
+    def __init__(self, minmax, text=None, parent=None):
+        # type: (tuple[int, int], str, QtWidgets.QWidget) -> None
         super(LengthValidator, self).__init__(parent)
         self.lo, self.hi = minmax
-        self._last_valid = None
+        self._last_valid = text
 
     @property
     def last_valid(self):
@@ -44,12 +44,13 @@ class StringSetting(QtWidgets.QLineEdit, SettingUI):
         # type: (Setting) -> None
         super(StringSetting, self).setSetting(setting)
         minmax = setting.property('minmax')
-        validator = LengthValidator(minmax, self) if minmax else None
+        validator = LengthValidator(minmax, setting.get(), self) if minmax else None
         self.setValidator(validator)
 
     def setValue(self, value):
         # type: (str) -> None
         self.setText(value)
+        self._fix_text()
 
     def value(self):
         # type: () -> str

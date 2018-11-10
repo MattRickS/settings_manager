@@ -17,7 +17,7 @@ class ListChoiceSetting(CheckableComboBox, SettingUI):
         super(ListChoiceSetting, self).setSetting(setting)
         # Load choices
         choices = setting.property('choices')
-        current_values = setting.get()
+        current_values = setting.get() or ()
         self.addItems(list(map(str, choices)))
         for idx, value in enumerate(choices):
             self.setItemChecked(idx, value in current_values)
