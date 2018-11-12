@@ -1,5 +1,6 @@
 from Qt import QtCore, QtGui, QtWidgets
 
+from settings_manager.exceptions import SettingsError
 from settings_manager.setting import Setting
 from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 from settings_manager.ui.setting_widgets.bool_setting import BoolSetting
@@ -16,7 +17,7 @@ def create_setting_widget(setting, parent=None):
     """ Initialises the setting widget or a default widget """
     cls = setting.property('widget') or get_default_setting_widget(setting)
     if cls is None:
-        raise ValueError('No widget defined for setting: {}'.format(setting))
+        raise SettingsError('No widget defined for setting: {}'.format(setting))
     return cls(setting, parent=parent)
 
 

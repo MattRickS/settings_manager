@@ -3,6 +3,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from settings_manager.exceptions import SettingsError
 from settings_manager.setting import Setting
 from settings_manager.ui.setting_widgets import create_setting_widget
+from settings_manager.ui.setting_widgets.setting_ui import SettingUI
 
 
 class SettingNode(object):
@@ -148,7 +149,7 @@ class SettingModel(QtCore.QAbstractItemModel):
             elif col == 1:
                 if isinstance(node.value, list):
                     return '\n'.join(map(str, node.value)) + '\n'
-                return node.value
+                return str(node.value)
 
     def flags(self, index):
         # type: (QtCore.QModelIndex) -> QtCore.Qt.ItemFlags
@@ -187,11 +188,6 @@ class SettingModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return False
         node = index.internalPointer()
-        if node.setting is not None:
-            try:
-                node.setting.set(value)
-            except SettingsError:
-                return False
         if value != node.value:
             node.value = value
             self.dataChanged.emit(index, index)
@@ -203,17 +199,23 @@ class SettingDelegate(QtWidgets.QStyledItemDelegate):
         if index.isValid():
             node = index.internalPointer()
             if node.setting is not None:
-                widget = create_setting_widget(node.setting, parent)
-                widget.setAutoFillBackground(True)
-                return widget
+                try:
+                    widget = create_setting_widget(node.setting, parent)
+                    widget.setAutoFillBackground(True)
+                    return widget
+                except SettingsError:
+                    pass
         return super(SettingDelegate, self).createEditor(parent, option, index)
 
     def setEditorData(self, editor, index):
-        if index.isValid():
+        if isinstance(editor, SettingUI):
             node = index.internalPointer()
             editor.setValue(node.value)
-            return
-        super(SettingDelegate, self).setEditorData(editor, index)
+        else:
+            super(SettingDelegate, self).setEditorData(editor, index)
+
+    # def setModelData(self, editor, model, index):
+    #     super(SettingDelegate, self).setModelData(editor, model, index)
 
 
 class SettingDictionaryView(QtWidgets.QTreeView):
@@ -257,9 +259,13 @@ if __name__ == '__main__':
     import sys
     app = QtWidgets.QApplication(sys.argv)
 
+    class A(object):
+        def __init__(self, val):
+            self.val = 1
+
     data_dict = {
         'integer': 1,
-        'string': 'some text',
+        'string': A(10),
         'float': 3.0,
         'list': ['a', 'b'],
         'bool': True,
